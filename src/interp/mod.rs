@@ -5,6 +5,7 @@ use crate::utils::term::*;
 use crate::utils::unify::Unifier;
 
 use crate::logic::ast::*;
+use rand::*;
 
 pub mod config;
 pub mod progagate;

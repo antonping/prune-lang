@@ -12,6 +12,7 @@ pub struct RunnerState<'prog, 'io> {
     stats: RunnerStats,
     ctx_cnt: usize,
     ansr_cnt: usize,
+    rng: rngs::ThreadRng,
     stack: Vec<Branch>,
     solver: Box<dyn solver::common::PrimSolver>,
 }
@@ -34,6 +35,8 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             args::Solver::NoSmt => Box::new(super::solver::no_smt::NoSmtSolver::new()),
         };
 
+        let rng = rand::rng();
+
         RunnerState {
             prog,
             pipe_io: pipe,
@@ -41,6 +44,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             stats: RunnerStats::new(),
             ctx_cnt: 0,
             ansr_cnt: 0,
+            rng,
             stack: Vec::new(),
             solver: solver_obj,
         }
@@ -56,7 +60,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
         self.ctx_cnt = 0;
     }
 
-    pub fn run_dfs_with_depth(&mut self, pred: Ident, depth_start: usize, depth_end: usize) {
+    fn init_stack(&mut self, pred: Ident) {
         // predicate for query can not be polymorphic!
         assert!(self.prog.preds[&pred].polys.is_empty());
 
@@ -92,7 +96,9 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
         };
 
         self.stack.push(brch);
+    }
 
+    fn run_dfs_with_depth(&mut self, depth_start: usize, depth_end: usize) {
         while let Some(mut brch) = self.stack.pop() {
             if self.config.debug_mode {
                 println!("{}", brch);
@@ -146,10 +152,14 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             args::Heuristic::Interleave => brch.naive_strategy(1),
             args::Heuristic::StructRecur => brch.struct_recur_strategy(),
             args::Heuristic::LookAhead => brch.lookahead_strategy(),
-            args::Heuristic::Random => brch.random_strategy(),
+            args::Heuristic::Random => brch.random_strategy(&mut self.rng),
         };
 
-        for rule_idx in brch.calls[call_idx].looks.iter().rev() {
+        use rand::seq::SliceRandom;
+        let mut looks = brch.calls[call_idx].looks.clone();
+        looks.shuffle(&mut self.rng);
+
+        for rule_idx in looks.iter().rev() {
             self.stats.step();
             self.ctx_cnt += 1;
             if let Ok(new_brch) = self.apply_rule(brch, call_idx, *rule_idx) {
@@ -246,8 +256,8 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             .unwrap();
 
             self.reset();
-
-            self.run_dfs_with_depth(entry, depth_limit - self.config.depth_step + 1, depth_limit);
+            self.init_stack(entry);
+            self.run_dfs_with_depth(depth_limit - self.config.depth_step + 1, depth_limit);
 
             let stat_res = self.stats.print_stat();
             writeln!(self.pipe_io.stat, "{}", stat_res).unwrap();

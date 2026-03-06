@@ -79,9 +79,9 @@ impl Branch {
     }
 
     #[allow(unused)]
-    pub fn random_strategy(&mut self) -> usize {
+    pub fn random_strategy(&mut self, rng: &mut rand::rngs::ThreadRng) -> usize {
         assert!(!self.calls.is_empty());
-        rand::random::<u32>().rem_euclid(self.calls.len() as u32) as usize
+        rng.random_range(0..self.calls.len())
     }
 
     #[allow(unused)]
