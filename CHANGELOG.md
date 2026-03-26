@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reimplement example `avl_tree_gen`.
 - Reimplement example `binary_arith`.
 - Use randomized rule application order in IDDFS.
+- Change the default values for CLI parameters.
 
 ## [0.2.0] - 2026-03-02
 
