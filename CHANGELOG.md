@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Reimplement example `binary_arith`.
+
 ### Fixed
 
 - Fix a bug in the parser that causes unwrapping an error.

@@ -8,13 +8,10 @@ datatype BitList where
 | Cons(Bit, BitList)
 end
 
-function well_formed_sign(xs: BitList) -> Bit
-begin
-    match xs with
-    | Nil => O
-    | Cons(I, Nil) => I
-    | Cons(_, Cons(head, tail)) => well_formed_sign(Cons(head, tail))
-    end
+datatype BitInt where
+| Pos(BitList)
+| Zero
+| Neg(BitList)
 end
 
 // adder (ci, x, y) -> (z, co)
@@ -32,56 +29,108 @@ begin
     end
 end
 
+function list_add_1(xs: BitList) -> BitList
+begin
+    match xs with
+    | Cons(O, tail) => Cons(I, tail)
+    | Cons(I, tail) => Cons(O, list_add_1(tail))
+    | Nil => Cons(O, Nil)
+    end
+end
+
 function full_adder_n(ci: Bit, xs: BitList, ys: BitList) -> BitList
 begin
     match (xs, ys) with
-    | (Nil, Nil) => match ci with
-        | O => Nil
-        | I => Cons(I, Nil)
-        end
+    | (Nil, Nil) => Cons(ci, Nil)
     | (Cons(x_head, x_tail), Nil) => 
-        let (z, co) = full_adder_1(ci, x_head, O);
-        Cons(z, full_adder_n(co, x_tail, Nil))
+        let (z, co) = full_adder_1(ci, x_head, I);
+        match co with
+        | O => Cons(z, x_tail)
+        | I => Cons(z, list_add_1(x_tail))
+        end
     | (Nil, Cons(y_head, y_tail)) => 
-        let (z, co) = full_adder_1(ci, O, y_head);
-        Cons(z, full_adder_n(co, Nil, y_tail))
+        let (z, co) = full_adder_1(ci, I, y_head);
+        match co with
+        | O => Cons(z, y_tail)
+        | I => Cons(z, list_add_1(y_tail))
+        end
     | (Cons(x_head, x_tail), Cons(y_head, y_tail)) =>
         let (z, co) = full_adder_1(ci, x_head, y_head);
         Cons(z, full_adder_n(co, x_tail, y_tail))
     end
 end
 
-function add(xs: BitList, ys: BitList) -> BitList
+function list_add(xs: BitList, ys: BitList) -> BitList
 begin
     full_adder_n(O, xs, ys)
 end
 
-function mul(xs: BitList, ys: BitList) -> BitList
+function list_mul(xs: BitList, ys: BitList) -> BitList
 begin
     match (xs, ys) with
     | (Nil, Nil) => Nil
-    | (Cons(_, _), Nil) => Nil
-    | (Nil, Cons(_, _)) => Nil
+    | (Cons(_, _), Nil) => xs
+    | (Nil, Cons(_, _)) => ys
     | (Cons(x_head, x_tail), Cons(y_head, y_tail)) =>
-        let new_tail = mul(x_tail, y_tail);
+        let new_tail = list_mul(x_tail, y_tail);
         match (x_head, y_head) with
         // (2m)(2n) = 4mn
         | (O, O) => Cons(O, Cons(O, new_tail))
         // (2m)(2n + 1) = 4mn + 2m
-        | (O, I) => Cons(O, add(x_tail, Cons(O, new_tail)))
+        | (O, I) => Cons(O, list_add(x_tail, Cons(O, new_tail)))
         // (2m + 1)(2n) = 4mn + 2n
-        | (I, O) => Cons(O, add(y_tail, Cons(O, new_tail)))
+        | (I, O) => Cons(O, list_add(y_tail, Cons(O, new_tail)))
         // (2m + 1)(2n + 1) = 4mn + 2(m + n) + 1
-        | (I, I) => Cons(I, add(add(x_tail, y_tail), Cons(O, new_tail)))
+        | (I, I) => Cons(I, list_add(list_add(x_tail, y_tail), Cons(O, new_tail)))
         end
     end
 end
 
-function pythagorean_triple(xs: BitList, ys: BitList, zs: BitList)
+function list_sub(xs: BitList, ys: BitList) -> BitInt
 begin
-    guard well_formed_sign(xs) = I;
-    guard well_formed_sign(ys) = I;
-    guard add(mul(xs, xs), mul(ys, ys)) = mul(zs, zs);
+    fresh zs;
+    alternative
+    // xs + (-ys) = (+zs) ===> ys + zs = xs
+    | guard xs = full_adder_n(O, ys, zs); Pos(zs)
+    // xs + (-ys) = (-zs) ===> (-xs) + ys = zs ===> xs + zs = ys
+    | guard ys = full_adder_n(O, xs, zs); Neg(zs)
+    // xs + (-ys) = 0 ===> xs = ys
+    | guard xs = ys; Zero
+    end
 end
 
-query pythagorean_triple(depth_step=20, depth_limit=200, answer_limit=1)
+function add(x: BitInt, y: BitInt) -> BitInt
+begin
+    match (x, y) with
+    | (Pos(xs), Pos(ys)) => Pos(full_adder_n(O, xs, ys))
+    | (Pos(xs), Zero) => Pos(xs)
+    | (Pos(xs), Neg(ys)) => list_sub(xs, ys)
+    | (Zero, ys) => ys
+    | (Neg(xs), Pos(ys)) => list_sub(ys, xs)
+    | (Neg(xs), Zero) => Neg(xs)
+    | (Neg(xs), Neg(ys)) => Neg(full_adder_n(O, xs, ys))
+    end 
+end
+
+function mul(x: BitInt, y: BitInt) -> BitInt
+begin
+    match (x, y) with
+    | (Pos(xs), Pos(ys)) => Pos(list_mul(xs, ys))
+    | (Pos(_xs), Zero) => Zero
+    | (Pos(xs), Neg(ys)) => Neg(list_mul(xs, ys))
+    | (Zero, _) => Zero
+    | (Neg(xs), Pos(ys)) => Neg(list_mul(xs, ys))
+    | (Neg(_xs), Zero) => Zero
+    | (Neg(xs), Neg(ys)) => Pos(list_mul(xs, ys))
+    end 
+end
+
+function pythagorean_triple(x: BitInt, y: BitInt, z: BitInt)
+begin
+    let Pos(_) = x;
+    let Pos(_) = y;
+    let Pos(_) = z;
+    guard add(mul(x, x), mul(y, y)) = mul(z, z);
+end
+
+query pythagorean_triple(depth_step=20, depth_limit=500, answer_limit=10)
