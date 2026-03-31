@@ -97,21 +97,17 @@ impl<'src> Parser<'src> {
         self.tokens[self.cursor - 1].span.end
     }
 
-    fn next_token(&mut self) -> ParseResult<&TokenSpan> {
+    fn next_token(&mut self) -> &TokenSpan {
         let tok = &self.tokens[self.cursor];
-        if tok.token == Token::TokError {
-            Err(ParseError::LexerError(self.peek_span().clone()))
-        } else {
-            if self.cursor < self.tokens.len() - 1 {
-                self.cursor += 1;
-            }
-            Ok(tok)
+        if self.cursor < self.tokens.len() - 1 {
+            self.cursor += 1;
         }
+        tok
     }
 
     fn match_token(&mut self, tok: Token) -> ParseResult<()> {
         if self.peek_token() == tok {
-            self.next_token()?;
+            self.next_token();
             Ok(())
         } else {
             Err(ParseError::FailedToMatch(
@@ -164,23 +160,23 @@ impl<'src> Parser<'src> {
     {
         // An ad-hoc solution for interpreting Unit as [LParen, RParen]
         if self.peek_token() == Token::Unit && left == Token::LParen && right == Token::RParen {
-            self.next_token()?;
+            self.next_token();
             return Ok(Vec::new());
         }
         let mut vec: Vec<T> = Vec::new();
         self.match_token(left)?;
         // allow leading delimiter
         if self.peek_token() == delim {
-            self.next_token()?;
+            self.next_token();
         }
         // allow empty list
         if self.peek_token() == right {
-            self.next_token()?;
+            self.next_token();
             return Ok(vec);
         }
         vec.push(func(self)?);
         while self.peek_token() == delim {
-            self.next_token()?;
+            self.next_token();
             // allow trailing delimiter
             if self.peek_token() == right {
                 break;
@@ -195,17 +191,17 @@ impl<'src> Parser<'src> {
         match self.peek_token() {
             Token::Int => {
                 let x = self.peek_slice().parse::<i64>().unwrap();
-                self.next_token()?;
+                self.next_token();
                 Ok(LitVal::Int(x))
             }
             Token::Float => {
                 let x = self.peek_slice().parse::<f64>().unwrap();
-                self.next_token()?;
+                self.next_token();
                 Ok(LitVal::Float(x))
             }
             Token::Bool => {
                 let x = self.peek_slice().parse::<bool>().unwrap();
-                self.next_token()?;
+                self.next_token();
                 Ok(LitVal::Bool(x))
             }
             Token::Char => {
@@ -214,7 +210,7 @@ impl<'src> Parser<'src> {
                 let x: String = "\"".chars().chain(x.chars()).chain("\"".chars()).collect();
                 if let Ok(s) = snailquote::unescape(&x) {
                     assert_eq!(s.len(), 1);
-                    self.next_token()?;
+                    self.next_token();
                     Ok(LitVal::Char(s.chars().nth(0).unwrap()))
                 } else {
                     Err(ParseError::LexerError(self.peek_span().clone()))
@@ -231,19 +227,19 @@ impl<'src> Parser<'src> {
     fn parse_lit_typ(&mut self) -> ParseResult<LitType> {
         match self.peek_token() {
             Token::TyInt => {
-                self.next_token()?;
+                self.next_token();
                 Ok(LitType::TyInt)
             }
             Token::TyFloat => {
-                self.next_token()?;
+                self.next_token();
                 Ok(LitType::TyFloat)
             }
             Token::TyBool => {
-                self.next_token()?;
+                self.next_token();
                 Ok(LitType::TyBool)
             }
             Token::TyChar => {
-                self.next_token()?;
+                self.next_token();
                 Ok(LitType::TyChar)
             }
             _tok => Err(ParseError::FailedToParse(
@@ -264,7 +260,7 @@ impl<'src> Parser<'src> {
                     Ident::dummy(&self.peek_slice())
                 };
                 let span = self.peek_span().clone();
-                self.next_token()?;
+                self.next_token();
                 Ok(Var { ident, span })
             }
             _tok => Err(ParseError::FailedToParse(
@@ -280,7 +276,7 @@ impl<'src> Parser<'src> {
             Token::UpperIdent => {
                 let ident = Ident::dummy(&self.peek_slice());
                 let span = self.peek_span().clone();
-                self.next_token()?;
+                self.next_token();
                 Ok(Var { ident, span })
             }
             _tok => Err(ParseError::FailedToParse(
@@ -295,7 +291,7 @@ impl<'src> Parser<'src> {
         match self.peek_token() {
             Token::PrimOpr => {
                 let s = self.peek_slice();
-                self.next_token()?;
+                self.next_token();
                 let res = match s {
                     "@iadd" => Prim::IAdd,
                     "@isub" => Prim::ISub,
@@ -381,7 +377,7 @@ impl<'src> Parser<'src> {
                     return Ok(expr_stack.pop().unwrap().0);
                 }
             };
-            self.next_token()?;
+            self.next_token();
 
             while !opr_stack.is_empty() {
                 let opr2 = opr_stack.last().unwrap();
@@ -579,7 +575,7 @@ impl<'src> Parser<'src> {
                 }
             }
             Token::Unit => {
-                self.next_token()?;
+                self.next_token();
                 let end = self.end_pos();
                 let span = Span { start, end };
                 Ok(Expr::Tuple {
@@ -722,7 +718,7 @@ impl<'src> Parser<'src> {
                 }
             }
             Token::Unit => {
-                self.next_token()?;
+                self.next_token();
                 let end = self.end_pos();
                 let span = Span { start, end };
                 Ok(Type::Tuple {
@@ -830,7 +826,7 @@ impl<'src> Parser<'src> {
             Token::Int => {
                 let x = self.peek_slice().parse::<i64>().unwrap();
                 if x >= 0 {
-                    self.next_token()?;
+                    self.next_token();
                     Ok(x as usize)
                 } else {
                     Err(ParseError::FailedToParse(
@@ -852,7 +848,7 @@ impl<'src> Parser<'src> {
         match self.peek_token() {
             Token::Bool => {
                 let x = self.peek_slice().parse::<bool>().unwrap();
-                self.next_token()?;
+                self.next_token();
                 Ok(x)
             }
             _ => Err(ParseError::FailedToParse(
@@ -926,44 +922,53 @@ impl<'src> Parser<'src> {
         }
     }
 
-    fn parse_decl(&mut self) -> ParseResult<Declaration> {
-        match self.peek_token() {
-            Token::Datatype => {
-                let decl = self.parse_data_decl()?;
-                Ok(Declaration::Data(decl))
-            }
-            Token::Function => {
-                let decl = self.parse_func_decl()?;
-                Ok(Declaration::Func(decl))
-            }
-            Token::Query => {
-                let decl = self.parse_query_decl()?;
-                Ok(Declaration::Query(decl))
-            }
-            _tok => Err(ParseError::FailedToParse(
-                "declaration",
-                self.peek_token(),
-                self.peek_span().clone(),
-            )),
-        }
-    }
-
-    fn parse_program(&mut self) -> Program {
-        let mut decls: Vec<Declaration> = Vec::new();
+    fn skip_failure_tokens(&mut self) {
+        // skip all tokens before the next "header" token
         loop {
             match self.peek_token() {
-                Token::Datatype | Token::Function | Token::Query => {
-                    // toplevel error recovering
-                    match self.parse_decl() {
-                        Ok(res) => decls.push(res),
-                        Err(err) => self.errors.push(err),
-                    }
+                Token::Datatype | Token::Function | Token::Query | Token::EndOfFile => {
+                    break;
                 }
                 Token::TokError => {
                     self.errors
                         .push(ParseError::LexerError(self.peek_span().clone()));
                     self.cursor += 1;
                 }
+                _ => {
+                    self.next_token();
+                    // nothing
+                }
+            }
+        }
+    }
+
+    fn parse_program(&mut self) -> Program {
+        let mut datas = Vec::new();
+        let mut funcs = Vec::new();
+        let mut querys = Vec::new();
+        loop {
+            match self.peek_token() {
+                Token::Datatype => match self.parse_data_decl() {
+                    Ok(decl) => datas.push(decl),
+                    Err(err) => {
+                        self.errors.push(err);
+                        self.skip_failure_tokens();
+                    }
+                },
+                Token::Function => match self.parse_func_decl() {
+                    Ok(decl) => funcs.push(decl),
+                    Err(err) => {
+                        self.errors.push(err);
+                        self.skip_failure_tokens();
+                    }
+                },
+                Token::Query => match self.parse_query_decl() {
+                    Ok(decl) => querys.push(decl),
+                    Err(err) => {
+                        self.errors.push(err);
+                        self.skip_failure_tokens();
+                    }
+                },
                 Token::EndOfFile => break,
                 tok => {
                     self.errors.push(ParseError::FailedToParse(
@@ -971,32 +976,11 @@ impl<'src> Parser<'src> {
                         tok,
                         self.peek_span().clone(),
                     ));
-                    // skip all tokens before the next "header" token
-                    loop {
-                        if let Token::Datatype | Token::Function | Token::Query | Token::EndOfFile =
-                            self.peek_token()
-                        {
-                            break;
-                        }
-                        self.next_token().unwrap();
-                    }
+                    self.skip_failure_tokens();
                 }
             }
         }
         self.match_token(Token::EndOfFile).unwrap();
-
-        let mut datas = Vec::new();
-        let mut funcs = Vec::new();
-        let mut querys = Vec::new();
-
-        for decl in decls.into_iter() {
-            match decl {
-                Declaration::Data(data) => datas.push(data),
-                Declaration::Func(func) => funcs.push(func),
-                Declaration::Query(query) => querys.push(query),
-            }
-        }
-
         Program {
             datas,
             funcs,

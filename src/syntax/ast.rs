@@ -7,13 +7,6 @@ pub struct Program {
     pub querys: Vec<QueryDecl>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum Declaration {
-    Data(DataDecl),
-    Func(FuncDecl),
-    Query(QueryDecl),
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Var {
     pub ident: Ident,
