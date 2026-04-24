@@ -221,14 +221,23 @@ pub fn run_pipline(args: &CliArgs) -> Result<Vec<usize>, io::Error> {
     }
 }
 
-pub fn run_cli() -> Result<Vec<usize>, io::Error> {
+pub fn run_cli_pipeline() -> Result<Vec<usize>, io::Error> {
     let args = args::parse_cli_args();
     let res = pipeline::run_pipline(&args)?;
     Ok(res)
 }
 
-pub fn run_cli_test(prog_name: PathBuf) -> Result<Vec<usize>, io::Error> {
+pub fn run_test_pipeline(prog_name: PathBuf) -> Result<Vec<usize>, io::Error> {
     let args = args::get_test_cli_args(prog_name);
+    let res = pipeline::run_pipline(&args)?;
+    Ok(res)
+}
+
+pub fn run_bench_pipeline(
+    prog_name: PathBuf,
+    heuristic: args::Heuristic,
+) -> Result<Vec<usize>, io::Error> {
+    let args = args::get_bench_cli_args(prog_name, heuristic);
     let res = pipeline::run_pipline(&args)?;
     Ok(res)
 }

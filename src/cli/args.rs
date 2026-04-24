@@ -68,3 +68,18 @@ pub fn get_test_cli_args(prog_name: PathBuf) -> CliArgs {
         warn_as_err: true,
     }
 }
+
+pub fn get_bench_cli_args(prog_name: PathBuf, heuristic: Heuristic) -> CliArgs {
+    CliArgs {
+        input: prog_name,
+        solver: Solver::Z3,
+        heuristic,
+        verbosity: 10,
+        dump_file: false,
+        debug_mode: false,
+        show_output: false,
+        show_stat: false,
+        show_prog: false,
+        warn_as_err: true,
+    }
+}
