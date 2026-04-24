@@ -2,7 +2,7 @@ use super::config::{RunnerConfig, RunnerStats};
 use super::solver;
 use super::strategy::*;
 use super::*;
-use crate::cli::args;
+use crate::cli::args::{self, CliArgs};
 use crate::cli::pipeline::PipeIO;
 
 pub struct RunnerState<'prog, 'io> {
@@ -21,11 +21,9 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
     pub fn new(
         prog: &'prog Program,
         pipe: &'io mut PipeIO,
-        solver: args::Solver,
-        heuristic: args::Heuristic,
-        debug_mode: bool,
+        args: &CliArgs,
     ) -> RunnerState<'prog, 'io> {
-        let solver_obj: Box<dyn solver::common::PrimSolver> = match solver {
+        let solver_obj: Box<dyn solver::common::PrimSolver> = match args.solver {
             args::Solver::Z3 => Box::new(super::solver::smtlib::SmtLibSolver::new(
                 super::solver::smtlib::SolverBackend::Z3,
             )),
@@ -40,7 +38,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
         RunnerState {
             prog,
             pipe_io: pipe,
-            config: RunnerConfig::new(solver, heuristic, debug_mode),
+            config: RunnerConfig::new(args),
             stats: RunnerStats::new(),
             ctx_cnt: 0,
             ansr_cnt: 0,
@@ -321,9 +319,7 @@ query is_elem_after_append(depth_step=5, depth_limit=50, answer_limit=100)
     let mut runner = RunnerState::new(
         &prog,
         &mut pipe_io,
-        args::Solver::Z3,
-        args::Heuristic::Interleave,
-        false,
+        &args::get_test_cli_args(std::path::PathBuf::new()),
     );
     let query = &prog.querys[0];
 

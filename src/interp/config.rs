@@ -1,5 +1,5 @@
 use super::*;
-use crate::cli::args;
+use crate::cli::args::{self, CliArgs};
 
 #[derive(Debug)]
 pub struct RunnerConfig {
@@ -13,15 +13,15 @@ pub struct RunnerConfig {
 }
 
 impl RunnerConfig {
-    pub fn new(solver: args::Solver, heuristic: args::Heuristic, debug_mode: bool) -> RunnerConfig {
+    pub fn new(args: &CliArgs) -> RunnerConfig {
         RunnerConfig {
-            depth_step: 5,
-            depth_limit: 100,
-            answer_limit: usize::MAX,
-            answer_pause: false,
-            solver,
-            heuristic,
-            debug_mode,
+            depth_step: args.depth_step,
+            depth_limit: args.depth_limit,
+            answer_limit: args.answer_limit,
+            answer_pause: args.answer_pause,
+            solver: args.solver,
+            heuristic: args.heuristic,
+            debug_mode: args.debug_mode,
         }
     }
 
