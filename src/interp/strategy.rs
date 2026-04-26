@@ -14,17 +14,17 @@ impl fmt::Display for Branch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "##### depth: = {} #####", self.depth)?;
 
-        for (par, val) in self.answers.iter() {
-            writeln!(f, "{} = {}", par, val)?;
+        for (par, val) in &self.answers {
+            writeln!(f, "{par} = {val}")?;
         }
 
-        for (prim, args) in self.prims.iter() {
+        for (prim, args) in &self.prims {
             let args = args.iter().format(", ");
-            writeln!(f, "{:?}({})", prim, args)?;
+            writeln!(f, "{prim:?}({args})")?;
         }
 
-        for call in self.calls.iter() {
-            writeln!(f, "{}", call)?;
+        for call in &self.calls {
+            writeln!(f, "{call}")?;
         }
 
         Ok(())
@@ -53,19 +53,19 @@ impl Branch {
     }
 
     pub fn clear_history(&mut self) {
-        for call in self.calls.iter_mut() {
+        for call in &mut self.calls {
             call.history.clear();
         }
     }
 
     pub fn merge(&mut self, unifier: Unifier<IdentCtx, LitVal, OptCons<Ident>>) {
-        for call in self.calls.iter_mut() {
-            for arg in call.args.iter_mut() {
+        for call in &mut self.calls {
+            for arg in &mut call.args {
                 *arg = unifier.subst(arg);
             }
         }
 
-        for (_par, val) in self.answers.iter_mut() {
+        for (_par, val) in &mut self.answers {
             *val = unifier.subst(val);
         }
     }
@@ -224,7 +224,7 @@ impl History {
     pub fn struct_recur_strategy_pred(&self, pred: Ident, args: &[TermVal<IdentCtx>]) -> bool {
         let args_size: Vec<usize> = args.iter().map(|arg| arg.height()).collect();
 
-        for node in self.0.iter() {
+        for node in &self.0 {
             if node.pred == pred
                 && node
                     .args_size

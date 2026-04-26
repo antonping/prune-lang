@@ -106,7 +106,7 @@ begin
     end
 end
 "#;
-    let (prog, errs) = crate::syntax::parser::parse_program(&src);
+    let (prog, errs) = crate::syntax::parser::parse_program(src);
     assert!(errs.is_empty());
 
     let prog = super::compile::compile_pass(&prog);

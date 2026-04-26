@@ -1034,7 +1034,7 @@ end
 
 query is_elem_after_append(depth_step=5, depth_limit=50, answer_limit=1)
 "#;
-    let (_prog, errs) = parse_program(&src);
+    let (_prog, errs) = parse_program(src);
     // println!("{:#?}", prog);
 
     assert!(errs.is_empty());

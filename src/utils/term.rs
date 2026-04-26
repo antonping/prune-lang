@@ -20,7 +20,7 @@ impl<V: fmt::Display, L: fmt::Display, C: fmt::Display> fmt::Display for Term<V,
             Term::Var(var) => fmt::Display::fmt(&var, f),
             Term::Lit(lit) => fmt::Display::fmt(&lit, f),
             Term::Cons(cons, flds) => {
-                if flds.is_empty() && !format!("{}", cons).is_empty() {
+                if flds.is_empty() && !format!("{cons}").is_empty() {
                     fmt::Display::fmt(&cons, f)
                 } else {
                     let flds = flds.iter().format(", ");
@@ -65,10 +65,9 @@ impl<V, L, C> Term<V, L, C> {
 
     pub fn height(&self) -> usize {
         match self {
-            Term::Var(_) => 1,
-            Term::Lit(_) => 1,
+            Term::Var(_) | Term::Lit(_) => 1,
             Term::Cons(_cons, flds) => {
-                let max_fld = flds.iter().map(|fld| fld.height()).max().unwrap_or(0);
+                let max_fld = flds.iter().map(Term::height).max().unwrap_or(0);
                 max_fld + 1
             }
         }
@@ -76,10 +75,9 @@ impl<V, L, C> Term<V, L, C> {
 
     pub fn size(&self) -> usize {
         match self {
-            Term::Var(_) => 1,
-            Term::Lit(_) => 1,
+            Term::Var(_) | Term::Lit(_) => 1,
             Term::Cons(_cons, flds) => {
-                let sum_fld: usize = flds.iter().map(|fld| fld.size()).sum();
+                let sum_fld: usize = flds.iter().map(Term::size).sum();
                 sum_fld + 1
             }
         }
@@ -143,7 +141,9 @@ impl<V: Copy + Eq, L, C> Term<V, L, C> {
             }
             Term::Lit(_lit) => {}
             Term::Cons(_cons, flds) => {
-                flds.iter().for_each(|fld| fld.free_vars_help(vec));
+                for fld in flds {
+                    fld.free_vars_help(vec);
+                }
             }
         }
     }

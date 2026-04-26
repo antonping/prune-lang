@@ -10,7 +10,7 @@ pub trait PrimSolver {
 pub fn infer_type(prims: &[(Prim, Vec<AtomVal<IdentCtx>>)]) -> HashMap<IdentCtx, LitType> {
     let mut map = HashMap::new();
 
-    for (prim, args) in prims.iter() {
+    for (prim, args) in prims {
         for (arg, typ) in args.iter().zip(prim.get_typ().iter()) {
             match arg {
                 Term::Var(var) => {

@@ -243,11 +243,7 @@ end
 
     let mut lex = Token::lexer(s);
 
-    loop {
-        if let Some(tok) = lex.next() {
-            println!("{:?} {:?} {}", tok, lex.span(), lex.slice());
-        } else {
-            break;
-        }
+    while let Some(tok) = lex.next() {
+        println!("{:?} {:?} {}", tok, lex.span(), lex.slice());
     }
 }

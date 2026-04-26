@@ -99,7 +99,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
     fn run_dfs_with_depth(&mut self, depth_start: usize, depth_end: usize) {
         while let Some(mut brch) = self.stack.pop() {
             if self.config.debug_mode {
-                println!("{}", brch);
+                println!("{brch}");
 
                 // pause to wait for any input
                 let mut s = String::new();
@@ -137,7 +137,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
                 .map(|(var, lit)| (var, Term::Lit(lit)))
                 .collect();
 
-            for (par, val) in brch.answers.iter() {
+            for (par, val) in &brch.answers {
                 writeln!(self.pipe_io.output, "{} = {}", par, val.substitute(&map)).unwrap();
             }
             self.ansr_cnt += 1;
@@ -189,7 +189,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
         new_brch.depth += 1;
         new_brch.remove(call_idx);
 
-        for (prim, args) in rule_ctx.prims.iter() {
+        for (prim, args) in &rule_ctx.prims {
             new_brch.prims.push((*prim, args.clone()));
         }
 
@@ -220,9 +220,9 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             new_brch.insert(call_idx, new_call);
         }
 
-        for call in new_brch.calls.iter_mut() {
+        for call in &mut new_brch.calls {
             let mut dirty_flag = false;
-            for arg in call.args.iter_mut() {
+            for arg in &mut call.args {
                 if let Some(new_arg) = unifier.subst_opt(arg) {
                     *arg = new_arg;
                     dirty_flag = true;
@@ -235,7 +235,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             }
         }
 
-        for (_par, val) in new_brch.answers.iter_mut() {
+        for (_par, val) in &mut new_brch.answers {
             *val = unifier.subst(val);
         }
 
@@ -258,7 +258,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             self.run_dfs_with_depth(depth_limit - self.config.depth_step + 1, depth_limit);
 
             let stat_res = self.stats.print_stat();
-            writeln!(self.pipe_io.stat, "{}", stat_res).unwrap();
+            writeln!(self.pipe_io.stat, "{stat_res}").unwrap();
 
             if self.ansr_cnt >= self.config.answer_limit {
                 return self.ansr_cnt;
@@ -301,7 +301,7 @@ end
 query is_elem_after_append(depth_step=5, depth_limit=50, answer_limit=100)
     "#;
 
-    let (mut prog, errs) = crate::syntax::parser::parse_program(&src);
+    let (mut prog, errs) = crate::syntax::parser::parse_program(src);
     assert!(errs.is_empty());
 
     let errs = crate::tych::rename::rename_pass(&mut prog);

@@ -69,7 +69,7 @@ impl From<RenameError> for Diagnostic {
                 let var_ty = var_ty.get_name();
                 Diagnostic::error(format!("unbounded {var_ty} varible!")).line_span(
                     span.clone(),
-                    format!("the identifier \"{}\" is not defined", ident),
+                    format!("the identifier \"{ident}\" is not defined"),
                 )
             }
             RenameError::MultipleDefinition {
@@ -82,7 +82,7 @@ impl From<RenameError> for Diagnostic {
                 Diagnostic::error(format!("multipile {var_ty} varible definition!"))
                     .line_span(
                         span1.clone(),
-                        format!("the identifier {} is defined here", ident),
+                        format!("the identifier {ident} is defined here"),
                     )
                     .line_span(span2.clone(), "and it is defined here again".to_string())
             }
@@ -94,7 +94,7 @@ impl From<RenameError> for Diagnostic {
                 let var_ty = var_ty.get_name();
                 Diagnostic::warn(format!("unused {var_ty} varible!")).line_span(
                     span.clone(),
-                    format!("the identifier {} is defined here, but never used", ident),
+                    format!("the identifier {ident} is defined here, but never used"),
                 )
             }
         }
@@ -338,11 +338,11 @@ impl Renamer {
     fn visit_func_decl(&mut self, func_decl: &mut FuncDecl) {
         self.enter_scope();
 
-        for poly in func_decl.polys.iter_mut() {
+        for poly in &mut func_decl.polys {
             self.intro_var(poly, VarType::TypeVar);
         }
 
-        for (par, typ) in func_decl.pars.iter_mut() {
+        for (par, typ) in &mut func_decl.pars {
             self.intro_var(par, VarType::Value);
             self.visit_type(typ);
         }
@@ -355,7 +355,7 @@ impl Renamer {
     fn visit_data_decl_head(&mut self, data_decl: &mut DataDecl) {
         self.intro_var(&mut data_decl.name, VarType::DataType);
 
-        for cons in data_decl.cons.iter_mut() {
+        for cons in &mut data_decl.cons {
             self.intro_var(&mut cons.name, VarType::Constructor);
         }
     }
@@ -363,12 +363,12 @@ impl Renamer {
     fn visit_data_decl(&mut self, data_decl: &mut DataDecl) {
         self.enter_scope();
 
-        for poly in data_decl.polys.iter_mut() {
+        for poly in &mut data_decl.polys {
             self.intro_var(poly, VarType::TypeVar);
         }
 
-        for cons in data_decl.cons.iter_mut() {
-            for fld in cons.flds.iter_mut() {
+        for cons in &mut data_decl.cons {
+            for fld in &mut cons.flds {
                 self.visit_type(fld);
             }
         }
@@ -382,20 +382,20 @@ impl Renamer {
 
     fn visit_prog(&mut self, prog: &mut Program) {
         // first iteration: visit heads
-        for data_decl in prog.datas.iter_mut() {
+        for data_decl in &mut prog.datas {
             self.visit_data_decl_head(data_decl);
         }
-        for func_decl in prog.funcs.iter_mut() {
+        for func_decl in &mut prog.funcs {
             self.visit_func_decl_head(func_decl);
         }
         // second iteration: visit body
-        for data_decl in prog.datas.iter_mut() {
+        for data_decl in &mut prog.datas {
             self.visit_data_decl(data_decl);
         }
-        for func_decl in prog.funcs.iter_mut() {
+        for func_decl in &mut prog.funcs {
             self.visit_func_decl(func_decl);
         }
-        for query_decl in prog.querys.iter_mut() {
+        for query_decl in &mut prog.querys {
             self.visit_query_decl(query_decl);
         }
     }
@@ -440,7 +440,7 @@ end
 query is_elem_after_append(depth_step=5, depth_limit=50, answer_limit=1)
 "#;
 
-    let (mut prog, errs) = crate::syntax::parser::parse_program(&src);
+    let (mut prog, errs) = crate::syntax::parser::parse_program(src);
     assert!(errs.is_empty());
 
     let errs = rename_pass(&mut prog);

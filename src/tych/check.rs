@@ -154,7 +154,7 @@ impl Checker {
             } => {
                 let expr = self.check_expr(expr);
                 let res = self.fresh();
-                for (patn, cont) in brchs.iter() {
+                for (patn, cont) in brchs {
                     let patn = self.check_patn(patn);
                     self.unify(&patn, &expr);
                     let cont = self.check_expr(cont);
@@ -304,7 +304,7 @@ impl Checker {
     }
 
     fn scan_data_ty_scm(&mut self, data_decl: &DataDecl) {
-        for poly in data_decl.polys.iter() {
+        for poly in &data_decl.polys {
             self.unifier.fresh(poly.ident);
         }
         let data_scm = DataTyScm {
@@ -335,7 +335,7 @@ impl Checker {
     }
 
     fn scan_func_ty_scm(&mut self, func_decl: &FuncDecl) {
-        for poly in func_decl.polys.iter() {
+        for poly in &func_decl.polys {
             self.unifier.fresh(poly.ident);
         }
 
@@ -361,19 +361,19 @@ impl Checker {
     }
 
     fn check_prog(&mut self, prog: &Program) {
-        for data_decl in prog.datas.iter() {
+        for data_decl in &prog.datas {
             self.scan_data_ty_scm(data_decl);
         }
 
-        for data_decl in prog.datas.iter() {
+        for data_decl in &prog.datas {
             self.scan_cons_ty_scm(data_decl);
         }
 
-        for func_decl in prog.funcs.iter() {
+        for func_decl in &prog.funcs {
             self.scan_func_ty_scm(func_decl);
         }
 
-        for func_decl in prog.funcs.iter() {
+        for func_decl in &prog.funcs {
             self.check_func_decl(func_decl);
         }
     }
@@ -401,7 +401,7 @@ fn into_term(value: &syntax::ast::Type) -> TermType {
 pub fn check_pass(prog: &Program) -> Vec<UnifyError<Ident, LitType, OptCons<Ident>>> {
     let mut pass = Checker::new();
     pass.check_prog(prog);
-    for err in pass.diag.iter_mut() {
+    for err in &mut pass.diag {
         *err = pass.unifier.subst_err(err);
     }
     pass.diag
@@ -439,7 +439,7 @@ end
 
 query is_elem_after_append(depth_step=5, depth_limit=50, answer_limit=1)
 "#;
-    let (mut prog, errs) = crate::syntax::parser::parse_program(&src);
+    let (mut prog, errs) = crate::syntax::parser::parse_program(src);
     assert!(errs.is_empty());
 
     let errs = crate::tych::rename::rename_pass(&mut prog);

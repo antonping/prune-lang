@@ -84,7 +84,7 @@ impl fmt::Display for IdentCtx {
 
 #[test]
 fn ident_fresh_test() {
-    let s1 = InternStr::new(&"foo");
+    let s1 = InternStr::new("foo");
     let x1 = Ident::fresh(&s1);
     let x2 = Ident::fresh(&s1);
     let x3 = Ident::fresh(&s1);
@@ -98,7 +98,7 @@ fn ident_fresh_test() {
 
 #[test]
 fn ident_uniquify_test() {
-    let s1 = InternStr::new(&"foo");
+    let s1 = InternStr::new("foo");
     let x1 = Ident::fresh(&s1);
     let x2 = x1.uniquify();
     assert_ne!(x1, x2);

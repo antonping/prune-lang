@@ -158,7 +158,7 @@ where
 
     /// Enter a new scope, record the current pivot of history
     pub fn enter_scope(&mut self) {
-        self.scopes.push(self.history.len())
+        self.scopes.push(self.history.len());
     }
 
     /// Leave from a scope, unwind the history and recover.

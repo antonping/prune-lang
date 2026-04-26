@@ -96,12 +96,12 @@ impl SmtLibSolver {
                     LitType::TyBool => self.ctx.bool_sort(),
                     LitType::TyChar => todo!(),
                 };
-                let sexp = self.ctx.declare_const(format!("{:?}", var), sort).unwrap();
+                let sexp = self.ctx.declare_const(format!("{var:?}"), sort).unwrap();
                 (*var, sexp)
             })
             .collect();
 
-        for (prim, args) in prims.iter() {
+        for (prim, args) in prims {
             let args: Vec<SExpr> = args
                 .iter()
                 .map(|arg| self.atom_to_sexp(arg, &sexp_map))

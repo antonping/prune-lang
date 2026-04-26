@@ -60,7 +60,7 @@ impl<'arg> Pipeline<'arg> {
 
         let prog = self.compile_pass(&prog);
 
-        writeln!(pipe_io.prog, "{}", prog).unwrap();
+        writeln!(pipe_io.prog, "{prog}").unwrap();
 
         let res = self.run_backend(&prog, pipe_io);
         Ok(res)
@@ -104,7 +104,7 @@ impl<'arg> Pipeline<'arg> {
         let mut runner = interp::runner::RunnerState::new(prog, pipe_io, self.args);
 
         for query_decl in &prog.querys {
-            for param in query_decl.params.iter() {
+            for param in &query_decl.params {
                 runner.config_set_param(param);
             }
             let res = runner.run_iddfs_loop(query_decl.entry);
@@ -120,21 +120,21 @@ fn create_dump_dir(src_path: &PathBuf) -> Result<PathBuf, io::Error> {
     if src_path.extension().and_then(|ext| ext.to_str()) != Some("pr") {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            format!("source file extension is not \".pr\"!: {:?}", src_path),
+            format!("source file extension is not \".pr\"!: {src_path:?}"),
         ));
     }
 
     if !src_path.exists() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
-            format!("file \"{:?}\" doesn't exist!", src_path),
+            format!("file \"{src_path:?}\" doesn't exist!"),
         ));
     }
 
     if !src_path.is_file() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            format!("path \"{:?}\" exists, but it is not a file!", src_path),
+            format!("path \"{src_path:?}\" exists, but it is not a file!"),
         ));
     }
 
@@ -149,7 +149,7 @@ fn create_dump_dir(src_path: &PathBuf) -> Result<PathBuf, io::Error> {
     } else if !dir_path.is_dir() {
         return Err(io::Error::new(
             io::ErrorKind::AlreadyExists,
-            format!("path \"{:?}\" exist, but it is not a directory!", dir_path),
+            format!("path \"{dir_path:?}\" exist, but it is not a directory!"),
         ));
     }
 

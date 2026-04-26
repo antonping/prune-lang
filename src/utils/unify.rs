@@ -18,17 +18,16 @@ impl<V: fmt::Display, L: fmt::Display, C: fmt::Display> From<UnifyError<V, L, Op
     fn from(val: UnifyError<V, L, OptCons<C>>) -> Self {
         match val {
             UnifyError::UnifyFailed(lhs, rhs) => {
-                Diagnostic::error(format!("Can not unify types: {} and {}!", lhs, rhs))
+                Diagnostic::error(format!("Can not unify types: {lhs} and {rhs}!"))
             }
             UnifyError::OccurCheckFailed(x, typ) => {
-                Diagnostic::error(format!("Occur check failed at variable: {} in {}!", x, typ))
+                Diagnostic::error(format!("Occur check failed at variable: {x} in {typ}!"))
             }
             UnifyError::UnifyVecDiffLen(vec1, vec2) => {
                 let vec1 = vec1.iter().format(", ");
                 let vec2 = vec2.iter().format(", ");
                 Diagnostic::error(format!(
-                    "Unify vectors of different length: [{}] and [{}]!",
-                    vec1, vec2
+                    "Unify vectors of different length: [{vec1}] and [{vec2}]!"
                 ))
             }
         }
@@ -71,7 +70,6 @@ impl<V: Eq + Hash + Clone, L: PartialEq + Clone, C: Eq + Clone> Unifier<V, L, C>
             if let Term::Var(var) = term {
                 if let Some(term2) = self.map.get(var) {
                     term = term2;
-                    continue;
                 } else {
                     return term;
                 }

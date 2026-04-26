@@ -261,7 +261,7 @@ pub fn propagate_unify(
                     // skip, do nothing
                 }
                 progagate::PropagateResult::Propagate(subst) => {
-                    for (lhs, rhs) in subst.iter() {
+                    for (lhs, rhs) in &subst {
                         let res = unifier.unify(&lhs.to_term(), &rhs.to_term());
                         if let Err(_err) = res {
                             return false;

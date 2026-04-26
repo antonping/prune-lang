@@ -287,7 +287,7 @@ fn translate_type(typ: &ast::Type) -> TermType {
 pub(super) fn logic_translate(funcs: &[ast::FuncDecl]) -> HashMap<Ident, GoalPredDecl> {
     let mut pass = Translater::new();
 
-    for func in funcs.iter() {
+    for func in funcs {
         pass.polys_map.insert(
             func.name.ident,
             func.polys.iter().map(|func| func.ident).collect(),
@@ -295,7 +295,7 @@ pub(super) fn logic_translate(funcs: &[ast::FuncDecl]) -> HashMap<Ident, GoalPre
     }
 
     let mut preds = HashMap::new();
-    for func in funcs.iter() {
+    for func in funcs {
         let res = pass.translate_func(func);
         preds.insert(func.name.ident, res);
     }
@@ -327,7 +327,7 @@ begin
 end
 "#;
 
-    let (prog, errs) = crate::syntax::parser::parse_program(&src);
+    let (prog, errs) = crate::syntax::parser::parse_program(src);
     assert!(errs.is_empty());
 
     let preds: HashMap<Ident, GoalPredDecl> = translate::logic_translate(&prog.funcs);

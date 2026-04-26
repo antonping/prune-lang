@@ -52,7 +52,7 @@ fn normalize_goal(goal: &Goal, mut brch: RuleWithEqs) -> Vec<RuleWithEqs> {
 fn solve_branch(brch: RuleWithEqs) -> Option<Rule> {
     let mut unifier: Unifier<Ident, LitVal, OptCons<Ident>> = Unifier::new();
 
-    for (lhs, rhs) in brch.eqs.iter() {
+    for (lhs, rhs) in &brch.eqs {
         if unifier.unify(lhs, rhs).is_err() {
             return None; // unsat branch!
         }
@@ -60,17 +60,17 @@ fn solve_branch(brch: RuleWithEqs) -> Option<Rule> {
 
     let mut rule = brch.rule;
 
-    for term in rule.head.iter_mut() {
+    for term in &mut rule.head {
         *term = unifier.subst(term);
     }
 
-    for (_prim, args) in rule.prims.iter_mut() {
+    for (_prim, args) in &mut rule.prims {
         for arg in args {
             *arg = unifier.subst(&arg.to_term()).to_atom().unwrap();
         }
     }
 
-    for (_pred, _polys, args) in rule.calls.iter_mut() {
+    for (_pred, _polys, args) in &mut rule.calls {
         for arg in args {
             *arg = unifier.subst(arg);
         }
@@ -80,21 +80,21 @@ fn solve_branch(brch: RuleWithEqs) -> Option<Rule> {
 }
 
 fn occurs_in_body<V: Copy + Eq>(rule: &Rule<V>, var: V) -> bool {
-    for term in rule.head.iter() {
+    for term in &rule.head {
         if term.occurs(&var) {
             return true;
         }
     }
 
-    for (_prim, args) in rule.prims.iter() {
-        for arg in args.iter() {
+    for (_prim, args) in &rule.prims {
+        for arg in args {
             if arg.occurs(&var) {
                 return true;
             }
         }
     }
 
-    for (_pred, _polys, args) in rule.calls.iter() {
+    for (_pred, _polys, args) in &rule.calls {
         for arg in args {
             if arg.occurs(&var) {
                 return true;
@@ -128,7 +128,7 @@ pub(super) fn normalize_pred(pred: &GoalPredDecl) -> Vec<Rule> {
         .flat_map(solve_branch)
         .collect();
 
-    for rule in rules.iter_mut() {
+    for rule in &mut rules {
         // use `retain`` when borrow checker becomes smarter
         // rule.vars.retain(|(var, _typ)| occurs_in_body(rule, *var));
 
@@ -167,7 +167,7 @@ begin
 end
 "#;
 
-    let (prog, errs) = crate::syntax::parser::parse_program(&src);
+    let (prog, errs) = crate::syntax::parser::parse_program(src);
     assert!(errs.is_empty());
 
     let preds: HashMap<Ident, GoalPredDecl> = translate::logic_translate(&prog.funcs);

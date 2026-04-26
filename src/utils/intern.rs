@@ -1,17 +1,16 @@
-use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync;
 
 static INDEXD_BUF_SIZE: usize = 256;
 
-static INTERNER: Lazy<sync::Mutex<Interner>> = Lazy::new(|| {
+static INTERNER: std::sync::LazyLock<sync::Mutex<Interner>> = std::sync::LazyLock::new(|| {
     let mut interner = Interner {
         str_to_idx: HashMap::new(),
         idx_to_str: Vec::new(),
     };
     for i in 0..INDEXD_BUF_SIZE {
-        let s = format!("x_{}", i);
+        let s = format!("x_{i}");
         let s = s.leak();
         interner.str_to_idx.insert(s.to_string(), i);
         interner.idx_to_str.push(s);
@@ -44,7 +43,7 @@ impl InternStr {
         if idx < INDEXD_BUF_SIZE {
             InternStr(idx)
         } else {
-            InternStr::new(format!("x_{}", idx).as_str())
+            InternStr::new(format!("x_{idx}").as_str())
         }
     }
 
@@ -79,18 +78,18 @@ fn intern_new_test() {
     let foo2: String = "foo".to_string();
     let bar1: &str = "bar";
     let bar2: String = "bar".to_string();
-    let s1 = InternStr::new(&foo1);
-    let s2 = InternStr::new(&foo2);
-    let s3 = InternStr::new(&bar1);
-    let s4 = InternStr::new(&bar2);
+    let s1 = InternStr::new(foo1);
+    let s2 = InternStr::new(foo2);
+    let s3 = InternStr::new(bar1);
+    let s4 = InternStr::new(bar2);
     assert_eq!(s1, s2);
     assert_eq!(s3, s4);
     assert_ne!(s1, s3);
     assert_ne!(s2, s4);
-    assert_eq!(format!("{}", s1), "foo");
-    assert_eq!(format!("{}", s2), "foo");
-    assert_eq!(format!("{}", s3), "bar");
-    assert_eq!(format!("{}", s4), "bar");
+    assert_eq!(format!("{s1}"), "foo");
+    assert_eq!(format!("{s2}"), "foo");
+    assert_eq!(format!("{s3}"), "bar");
+    assert_eq!(format!("{s4}"), "bar");
 }
 
 #[test]
@@ -103,8 +102,8 @@ fn intern_indexd_test() {
     assert_eq!(s3, s4);
     assert_ne!(s1, s3);
     assert_ne!(s2, s4);
-    assert_eq!(format!("{}", s1), "x_42");
-    assert_eq!(format!("{}", s2), "x_42");
-    assert_eq!(format!("{}", s3), "x_500");
-    assert_eq!(format!("{}", s4), "x_500");
+    assert_eq!(format!("{s1}"), "x_42");
+    assert_eq!(format!("{s2}"), "x_42");
+    assert_eq!(format!("{s3}"), "x_500");
+    assert_eq!(format!("{s4}"), "x_500");
 }

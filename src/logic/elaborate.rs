@@ -42,7 +42,7 @@ impl Elaborator {
     }
 
     fn visit_data_ty_scm(&mut self, data_decl: &DataDecl) {
-        for poly in data_decl.polys.iter() {
+        for poly in &data_decl.polys {
             self.unifier.fresh(*poly);
         }
         let data_scm = DataTyScm {
@@ -72,7 +72,7 @@ impl Elaborator {
     }
 
     fn visit_pred_ty_scm(&mut self, pred_decl: &PredDecl) {
-        for poly in pred_decl.polys.iter() {
+        for poly in &pred_decl.polys {
             self.unifier.fresh(*poly);
         }
 
@@ -156,45 +156,45 @@ impl Elaborator {
     }
 
     fn visit_rule(&mut self, rule: &Rule) {
-        for (var, typ) in rule.vars.iter() {
+        for (var, typ) in &rule.vars {
             self.val_ctx.insert(*var, typ.clone());
         }
 
-        for term in rule.head.iter() {
+        for term in &rule.head {
             self.visit_term(term);
         }
 
-        for (pred, polys, args) in rule.calls.iter() {
+        for (pred, polys, args) in &rule.calls {
             self.visit_call(*pred, polys, args);
         }
 
-        for (prim, args) in rule.prims.iter() {
+        for (prim, args) in &rule.prims {
             self.visit_prim(*prim, args);
         }
     }
 
     fn visit_pred_decl(&mut self, pred_decl: &mut PredDecl) {
-        for (par, typ) in pred_decl.pars.iter() {
+        for (par, typ) in &pred_decl.pars {
             self.val_ctx.insert(*par, typ.clone());
         }
 
-        for rule in pred_decl.rules.iter() {
+        for rule in &pred_decl.rules {
             self.visit_rule(rule);
         }
     }
 
     fn elaborate_pred_decl(&self, pred_decl: &mut PredDecl) {
-        for rule in pred_decl.rules.iter_mut() {
+        for rule in &mut pred_decl.rules {
             self.elaborate_rule(rule);
         }
     }
 
     fn elaborate_rule(&self, rule: &mut Rule) {
-        for (_var, typ) in rule.vars.iter_mut() {
+        for (_var, typ) in &mut rule.vars {
             *typ = self.unifier.subst(typ);
         }
 
-        for (_pred, polys, _args) in rule.calls.iter_mut() {
+        for (_pred, polys, _args) in &mut rule.calls {
             for poly in polys {
                 *poly = self.unifier.subst(poly);
             }
@@ -202,23 +202,23 @@ impl Elaborator {
     }
 
     fn visit_prog(&mut self, prog: &mut Program) {
-        for (_, data_decl) in prog.datas.iter() {
+        for data_decl in prog.datas.values() {
             self.visit_data_ty_scm(data_decl);
         }
 
-        for (_, data_decl) in prog.datas.iter() {
+        for data_decl in prog.datas.values() {
             self.visit_cons_ty_scm(data_decl);
         }
 
-        for (_, pred_decl) in prog.preds.iter() {
+        for pred_decl in prog.preds.values() {
             self.visit_pred_ty_scm(pred_decl);
         }
 
-        for (_, pred_decl) in prog.preds.iter_mut() {
+        for pred_decl in prog.preds.values_mut() {
             self.visit_pred_decl(pred_decl);
         }
 
-        for (_, pred_decl) in prog.preds.iter_mut() {
+        for pred_decl in prog.preds.values_mut() {
             self.elaborate_pred_decl(pred_decl);
         }
     }
@@ -252,7 +252,7 @@ begin
     end
 end
 "#;
-    let (prog, errs) = crate::syntax::parser::parse_program(&src);
+    let (prog, errs) = crate::syntax::parser::parse_program(src);
     assert!(errs.is_empty());
 
     let mut prog = super::compile::compile_pass(&prog);

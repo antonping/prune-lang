@@ -95,7 +95,7 @@ impl fmt::Display for PredDecl {
         let pars = self
             .pars
             .iter()
-            .format_with(", ", |(var, typ), f| f(&format_args!("{}: {}", var, typ)));
+            .format_with(", ", |(var, typ), f| f(&format_args!("{var}: {typ}")));
 
         if self.polys.is_empty() {
             writeln!(f, "predicate {}({}):", self.name, pars)?;
@@ -104,8 +104,8 @@ impl fmt::Display for PredDecl {
             writeln!(f, "predicate {}[{}]({}):", self.name, polys, pars)?;
         }
 
-        for rule in self.rules.iter() {
-            write!(f, "{}", rule)?;
+        for rule in &self.rules {
+            write!(f, "{rule}")?;
         }
         writeln!(f, "end")?;
 
@@ -127,11 +127,11 @@ impl<V: fmt::Display> fmt::Display for Rule<V> {
 
         writeln!(f, "| ({}) :-", self.head.iter().format(", "))?;
 
-        for (prim, args) in self.prims.iter() {
+        for (prim, args) in &self.prims {
             writeln!(f, "    {:?}({})", prim, args.iter().format(", "))?;
         }
 
-        for (pred, polys, args) in self.calls.iter() {
+        for (pred, polys, args) in &self.calls {
             if polys.is_empty() {
                 writeln!(f, "    {}({})", pred, args.iter().format(", "))?;
             } else {
@@ -162,8 +162,8 @@ impl fmt::Display for DataDecl {
             writeln!(f, "datatype {} where", self.name)?;
         }
 
-        for cons in self.cons.iter() {
-            write!(f, "{}", cons)?;
+        for cons in &self.cons {
+            write!(f, "{cons}")?;
         }
 
         writeln!(f, "end")?;
@@ -179,12 +179,12 @@ impl fmt::Display for Constructor {
 
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (_data, data_decl) in self.datas.iter() {
-            writeln!(f, "{}", data_decl)?;
+        for data_decl in self.datas.values() {
+            writeln!(f, "{data_decl}")?;
         }
 
-        for (_pred, pred_decl) in self.preds.iter() {
-            writeln!(f, "{}", pred_decl)?;
+        for pred_decl in self.preds.values() {
+            writeln!(f, "{pred_decl}")?;
         }
 
         Ok(())
