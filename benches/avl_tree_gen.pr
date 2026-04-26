@@ -1,0 +1,77 @@
+datatype Tree[a] where
+| Empty
+| Node(Tree[a], a, Tree[a])
+end
+
+function is_balanced[a](tree: Tree[a])
+begin
+    let _ = is_balanced_help(tree);
+end
+
+function is_balanced_help[a](tree: Tree[a]) -> Int
+begin
+    match tree with
+    | Empty => 0
+    | Node(left, _, right) =>
+        let l_h = is_balanced_help(left);
+        let r_h = is_balanced_help(right);
+        if l_h < r_h then
+            guard (r_h - l_h <= 1) = true;
+            r_h + 1
+        else
+            guard (l_h - r_h <= 1) = true;
+            l_h + 1
+    end
+end
+
+function is_sorted(tree: Tree[Int])
+begin
+    match tree with
+    | Empty => ()
+    | Node(left, x, right) =>
+        guard is_sorted_max(left, x);
+        guard is_sorted_min(right, x);
+    end
+end
+
+function is_sorted_min(tree: Tree[Int], min: Int)
+begin
+    match tree with
+    | Empty => ()
+    | Node(left, x, right) =>
+        guard x > min = true;
+        guard is_sorted_min_max(left, min, x);
+        guard is_sorted_min(right, x);
+    end
+end
+
+function is_sorted_max(tree: Tree[Int], max: Int)
+begin
+    match tree with
+    | Empty => ()
+    | Node(left, x, right) =>
+        guard x < max = true;
+        guard is_sorted_max(left, x);
+        guard is_sorted_min_max(right, x, max);
+    end
+end
+
+function is_sorted_min_max(tree: Tree[Int], min: Int, max: Int)
+begin
+    match tree with
+    | Empty => ()
+    | Node(left, x, right) =>
+        guard x > min = true;
+        guard x < max = true;
+        guard is_sorted_min_max(left, min, x);
+        guard is_sorted_min_max(right, x, max);
+    end
+end
+
+function example(tree: Tree[Int])
+begin
+    guard is_sorted(tree);
+    guard is_balanced(tree);
+end
+
+query example(depth_step=2)

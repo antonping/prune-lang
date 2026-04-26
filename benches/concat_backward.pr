@@ -22,4 +22,4 @@ begin
     guard concat(xs, ys) = rev_nat_list(100);
 end
 
-query example(depth_step=50, depth_limit=1000, answer_limit=101)
+query example(answer_limit=101)

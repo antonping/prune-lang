@@ -132,7 +132,7 @@ impl Branch {
             if call.looks.len() <= 1 {
                 return call_idx;
             }
-            vec.push(5 * call.looks.len() + call.history.len());
+            vec.push(2 * call.looks.len() + call.history.len());
         }
 
         let (idx, _) = vec.iter().enumerate().min_by_key(|(_idx, br)| *br).unwrap();
