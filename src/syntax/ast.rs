@@ -49,6 +49,17 @@ pub enum Type {
     },
 }
 
+impl Type {
+    pub fn get_span(&self) -> Span {
+        match self {
+            Type::Lit { span, .. } => span.clone(),
+            Type::Var { span, .. } => span.clone(),
+            Type::Cons { span, .. } => span.clone(),
+            Type::Tuple { span, .. } => span.clone(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct FuncDecl {
     pub name: Var,
@@ -78,6 +89,17 @@ pub enum Pattern {
         flds: Vec<Pattern>,
         span: Span,
     },
+}
+
+impl Pattern {
+    pub fn get_span(&self) -> Span {
+        match self {
+            Pattern::Lit { span, .. } => span.clone(),
+            Pattern::Var { span, .. } => span.clone(),
+            Pattern::Cons { span, .. } => span.clone(),
+            Pattern::Tuple { span, .. } => span.clone(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -148,6 +170,27 @@ pub enum Expr {
     Undefined {
         span: Span,
     },
+}
+
+impl Expr {
+    pub fn get_span(&self) -> Span {
+        match self {
+            Expr::Lit { span, .. } => span.clone(),
+            Expr::Var { span, .. } => span.clone(),
+            Expr::Prim { span, .. } => span.clone(),
+            Expr::Cons { span, .. } => span.clone(),
+            Expr::Tuple { span, .. } => span.clone(),
+            Expr::Match { span, .. } => span.clone(),
+            Expr::Let { span, .. } => span.clone(),
+            Expr::App { span, .. } => span.clone(),
+            Expr::Ifte { span, .. } => span.clone(),
+            Expr::Cond { span, .. } => span.clone(),
+            Expr::Alter { span, .. } => span.clone(),
+            Expr::Fresh { span, .. } => span.clone(),
+            Expr::Guard { span, .. } => span.clone(),
+            Expr::Undefined { span, .. } => span.clone(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

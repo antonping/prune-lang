@@ -1,4 +1,5 @@
-// use crate::syntax::lexer::Span;
+use crate::syntax::ast::*;
+use crate::syntax::lexer::Span;
 use crate::utils::ident::Ident;
 use crate::utils::lit::LitType;
 use crate::utils::term::*;

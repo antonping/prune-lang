@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::syntax::{self, ast::*};
+use crate::syntax::{self};
 use crate::utils::prim::Prim;
 use crate::utils::unify::*;
 
@@ -25,13 +25,58 @@ struct DataTyScm {
     polys: Vec<Ident>,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum CheckError {
+    UnifyFailed {
+        typ1: TermType,
+        typ2: TermType,
+        span: Span,
+    },
+    OccurCheckFailed {
+        var: Ident,
+        typ: TermType,
+        span: Span,
+    },
+    UnifyVecDiffLen {
+        vec1: Vec<TermType>,
+        vec2: Vec<TermType>,
+        span: Span,
+    },
+}
+
+use crate::cli::diagnostic::Diagnostic;
+impl From<CheckError> for Diagnostic {
+    fn from(val: CheckError) -> Self {
+        match val {
+            CheckError::UnifyFailed {typ1, typ2, span } => {
+                Diagnostic::error(format!("cannot match type!")).line_span(
+                    span.clone(),
+                    format!("the expression here has type {typ1}, but expected {typ2}."),
+                )
+            }
+            CheckError::OccurCheckFailed { var, typ, span } => {
+                Diagnostic::error(format!("occurrence check failed!")).line_span(
+                    span.clone(),
+                    format!("failed to unify the variable {var} with type {typ}, since it occurs in its own type."),
+                )
+            }
+            CheckError::UnifyVecDiffLen { vec1, vec2, span } => {
+                Diagnostic::error(format!("type vectors have different length!")).line_span(
+                    span.clone(),
+                    format!("failed to unify two vectors with lengths: {vec1:?} and {vec2:?}"),
+                )
+            }
+        }
+    }
+}
+
 struct Checker {
     val_ctx: HashMap<Ident, TermType>,
     func_ctx: HashMap<Ident, FuncTyScm>,
     cons_ctx: HashMap<Ident, ConsTyScm>,
     data_ctx: HashMap<Ident, DataTyScm>,
     unifier: Unifier<Ident, LitType, OptCons<Ident>>,
-    diag: Vec<UnifyError<Ident, LitType, OptCons<Ident>>>,
+    errors: Vec<CheckError>,
 }
 
 impl Checker {
@@ -42,7 +87,7 @@ impl Checker {
             cons_ctx: HashMap::new(),
             data_ctx: HashMap::new(),
             unifier: Unifier::new(),
-            diag: Vec::new(),
+            errors: Vec::new(),
         }
     }
 
@@ -50,43 +95,71 @@ impl Checker {
         TermType::Var(Ident::fresh(&"a"))
     }
 
-    fn unify(&mut self, typ1: &TermType, typ2: &TermType) {
+    fn unify(&mut self, typ1: &TermType, typ2: &TermType, span: &Span) {
         match self.unifier.unify(typ1, typ2) {
             Ok(()) => {}
-            Err(err) => {
-                self.diag.push(err);
+            Err(UnifyError::UnifyFailed(typ1, typ2)) => {
+                self.errors.push(CheckError::UnifyFailed {
+                    typ1,
+                    typ2,
+                    span: span.clone(),
+                });
+            }
+            Err(UnifyError::OccurCheckFailed(var, typ)) => {
+                self.errors.push(CheckError::OccurCheckFailed {
+                    var,
+                    typ,
+                    span: span.clone(),
+                });
+            }
+            Err(UnifyError::UnifyVecDiffLen(vec1, vec2)) => {
+                self.errors.push(CheckError::UnifyVecDiffLen {
+                    vec1,
+                    vec2,
+                    span: span.clone(),
+                });
             }
         }
     }
 
-    fn unify_many(&mut self, typs1: &[TermType], typs2: &[TermType]) {
-        match self.unifier.unify_many(typs1, typs2) {
-            Ok(()) => {}
-            Err(err) => {
-                self.diag.push(err);
+    fn unify_many(&mut self, vec1: &[TermType], vec2: &[(TermType, Span)], span: &Span) {
+        if vec1.len() == vec2.len() {
+            for (lhs, (rhs, span)) in vec1.iter().zip(vec2.iter()) {
+                self.unify(lhs, rhs, span);
             }
+        } else {
+            self.errors.push(CheckError::UnifyVecDiffLen {
+                vec1: vec1.to_vec(),
+                vec2: vec2.iter().map(|x| x.0.clone()).collect(),
+                span: span.clone(),
+            });
         }
     }
 
-    fn check_prim(&mut self, prim: &Prim, args: &[Expr]) -> TermType {
-        let args: Vec<_> = args.iter().map(|arg| self.check_expr(arg)).collect();
+    fn check_prim(&mut self, prim: &Prim, args: &[Expr], span: &Span) -> TermType {
+        let args: Vec<_> = args
+            .iter()
+            .map(|arg| (self.infer_expr(arg), arg.get_span()))
+            .collect();
 
         match prim {
             Prim::IAdd | Prim::ISub | Prim::IMul | Prim::IDiv | Prim::IRem => {
                 self.unify_many(
                     &[TermType::Lit(LitType::TyInt), TermType::Lit(LitType::TyInt)],
                     &args,
+                    span,
                 );
                 TermType::Lit(LitType::TyInt)
             }
             Prim::INeg => {
-                self.unify_many(&[TermType::Lit(LitType::TyInt)], &args);
+                self.unify_many(&[TermType::Lit(LitType::TyInt)], &args, span);
                 TermType::Lit(LitType::TyInt)
             }
             Prim::ICmp(_) => {
                 self.unify_many(
                     &[TermType::Lit(LitType::TyInt), TermType::Lit(LitType::TyInt)],
                     &args,
+                    span,
                 );
                 TermType::Lit(LitType::TyBool)
             }
@@ -97,32 +170,23 @@ impl Checker {
                         TermType::Lit(LitType::TyBool),
                     ],
                     &args,
+                    span,
                 );
                 TermType::Lit(LitType::TyBool)
             }
             Prim::BNot => {
-                self.unify_many(&[TermType::Lit(LitType::TyBool)], &args);
+                self.unify_many(&[TermType::Lit(LitType::TyBool)], &args, span);
                 TermType::Lit(LitType::TyBool)
             }
         }
     }
 
-    fn check_expr(&mut self, expr: &Expr) -> TermType {
+    fn infer_expr(&mut self, expr: &Expr) -> TermType {
         match expr {
             Expr::Lit { lit, span: _ } => TermType::Lit(lit.get_typ()),
             Expr::Var { var, span: _ } => self.val_ctx[&var.ident].clone(),
-            Expr::Prim {
-                prim,
-                args,
-                span: _,
-            } => self.check_prim(prim, args),
-            Expr::Cons {
-                cons,
-                flds,
-                span: _,
-            } => {
-                let flds: Vec<_> = flds.iter().map(|fld| self.check_expr(fld)).collect();
-
+            Expr::Prim { prim, args, span } => self.check_prim(prim, args, span),
+            Expr::Cons { cons, flds, span } => {
                 // instantiate constructor type scheme
                 let cons_scm = &self.cons_ctx[&cons.ident];
 
@@ -140,11 +204,16 @@ impl Checker {
 
                 let inst_res = cons_scm.res.substitute(&inst_map);
 
-                self.unify_many(&inst_flds, &flds);
+                let flds: Vec<_> = flds
+                    .iter()
+                    .map(|fld| (self.infer_expr(fld), fld.get_span()))
+                    .collect();
+
+                self.unify_many(&inst_flds, &flds, span);
                 inst_res
             }
             Expr::Tuple { flds, span: _ } => {
-                let flds: Vec<TermType> = flds.iter().map(|fld| self.check_expr(fld)).collect();
+                let flds: Vec<TermType> = flds.iter().map(|fld| self.infer_expr(fld)).collect();
                 TermType::Cons(OptCons::None, flds)
             }
             Expr::Match {
@@ -152,13 +221,15 @@ impl Checker {
                 brchs,
                 span: _,
             } => {
-                let expr = self.check_expr(expr);
+                let expr_ty = self.infer_expr(expr);
                 let res = self.fresh();
                 for (patn, cont) in brchs {
-                    let patn = self.check_patn(patn);
-                    self.unify(&patn, &expr);
-                    let cont = self.check_expr(cont);
-                    self.unify(&res, &cont);
+                    let patn_ty = self.check_patn(patn);
+                    let patn_span = patn.get_span();
+                    self.unify(&patn_ty, &expr_ty, &patn_span);
+                    let cont_ty = self.infer_expr(cont);
+                    let cont_span = cont.get_span();
+                    self.unify(&res, &cont_ty, &cont_span);
                 }
                 res
             }
@@ -168,18 +239,13 @@ impl Checker {
                 cont,
                 span: _,
             } => {
-                let expr = self.check_expr(expr);
-                let patn = self.check_patn(patn);
-                self.unify(&patn, &expr);
-                self.check_expr(cont)
+                let expr_ty = self.infer_expr(expr);
+                let expr_span = expr.get_span();
+                let patn_ty = self.check_patn(patn);
+                self.unify(&patn_ty, &expr_ty, &expr_span);
+                self.infer_expr(cont)
             }
-            Expr::App {
-                func,
-                args,
-                span: _,
-            } => {
-                let args: Vec<_> = args.iter().map(|arg| self.check_expr(arg)).collect();
-
+            Expr::App { func, args, span } => {
                 // instantiate predicate type scheme
                 let func_scm = &self.func_ctx[&func.ident];
 
@@ -197,7 +263,12 @@ impl Checker {
 
                 let inst_res = func_scm.res.substitute(&inst_map);
 
-                self.unify_many(&inst_pars, &args);
+                let args: Vec<_> = args
+                    .iter()
+                    .map(|arg| (self.infer_expr(arg), arg.get_span()))
+                    .collect();
+
+                self.unify_many(&inst_pars, &args, span);
                 inst_res
             }
             Expr::Ifte {
@@ -206,28 +277,33 @@ impl Checker {
                 els,
                 span: _,
             } => {
-                let cond = self.check_expr(cond);
-                self.unify(&cond, &TermType::Lit(LitType::TyBool));
-                let then = self.check_expr(then);
-                let els = self.check_expr(els);
-                self.unify(&then, &els);
-                then
+                let cond_ty = self.infer_expr(cond);
+                let cond_span = cond.get_span();
+                self.unify(&cond_ty, &TermType::Lit(LitType::TyBool), &cond_span);
+                let then_ty = self.infer_expr(then);
+                let els_ty = self.infer_expr(els);
+                let els_span = els.get_span();
+                self.unify(&then_ty, &els_ty, &els_span);
+                then_ty
             }
             Expr::Cond { brchs, span: _ } => {
                 let res = self.fresh();
                 for (cond, body) in brchs {
-                    let cond = self.check_expr(cond);
-                    let body = self.check_expr(body);
-                    self.unify(&cond, &TermType::Lit(LitType::TyBool));
-                    self.unify(&body, &res);
+                    let cond_ty = self.infer_expr(cond);
+                    let cond_span = cond.get_span();
+                    let body_ty = self.infer_expr(body);
+                    let body_span = body.get_span();
+                    self.unify(&cond_ty, &TermType::Lit(LitType::TyBool), &cond_span);
+                    self.unify(&body_ty, &res, &body_span);
                 }
                 res
             }
             Expr::Alter { brchs, span: _ } => {
                 let res = self.fresh();
                 for body in brchs {
-                    let body = self.check_expr(body);
-                    self.unify(&body, &res);
+                    let body_ty = self.infer_expr(body);
+                    let body_span = body.get_span();
+                    self.unify(&body_ty, &res, &body_span);
                 }
                 res
             }
@@ -240,7 +316,7 @@ impl Checker {
                     let cell = self.fresh();
                     self.val_ctx.insert(var.ident, cell);
                 }
-                self.check_expr(cont)
+                self.infer_expr(cont)
             }
             Expr::Guard {
                 lhs,
@@ -248,14 +324,20 @@ impl Checker {
                 cont,
                 span: _,
             } => {
-                let lhs = self.check_expr(lhs);
+                let lhs_ty = self.infer_expr(lhs);
                 if let Some(rhs) = rhs {
-                    let rhs = self.check_expr(rhs);
-                    self.unify(&lhs, &rhs);
+                    let rhs_ty = self.infer_expr(rhs);
+                    let rhs_span = rhs.get_span();
+                    self.unify(&lhs_ty, &rhs_ty, &rhs_span);
                 } else {
-                    self.unify(&lhs, &TermType::Cons(OptCons::None, Vec::new()));
+                    let lhs_span = lhs.get_span();
+                    self.unify(
+                        &lhs_ty,
+                        &TermType::Cons(OptCons::None, Vec::new()),
+                        &lhs_span,
+                    );
                 }
-                self.check_expr(cont)
+                self.infer_expr(cont)
             }
             Expr::Undefined { span: _ } => self.fresh(),
         }
@@ -269,13 +351,7 @@ impl Checker {
                 self.val_ctx.insert(var.ident, ty.clone());
                 ty
             }
-            Pattern::Cons {
-                cons,
-                flds,
-                span: _,
-            } => {
-                let flds: Vec<TermType> = flds.iter().map(|fld| self.check_patn(fld)).collect();
-
+            Pattern::Cons { cons, flds, span } => {
                 // instantiate constructor type scheme
                 let cons_scm = &self.cons_ctx[&cons.ident];
 
@@ -293,7 +369,12 @@ impl Checker {
 
                 let inst_res = cons_scm.res.substitute(&inst_map);
 
-                self.unify_many(&inst_flds, &flds);
+                let flds: Vec<_> = flds
+                    .iter()
+                    .map(|fld| (self.check_patn(fld), fld.get_span()))
+                    .collect();
+
+                self.unify_many(&inst_flds, &flds, span);
                 inst_res
             }
             Pattern::Tuple { flds, span: _ } => {
@@ -356,8 +437,9 @@ impl Checker {
         for ((par, _), par_ty) in func_decl.pars.iter().zip(func_scm.pars.iter()) {
             self.val_ctx.insert(par.ident, par_ty.clone());
         }
-        let body_ty = self.check_expr(&func_decl.body);
-        self.unify(&func_scm.res, &body_ty);
+        let body_ty = self.infer_expr(&func_decl.body);
+        let body_span = func_decl.body.get_span();
+        self.unify(&func_scm.res, &body_ty, &body_span);
     }
 
     fn check_prog(&mut self, prog: &Program) {
@@ -398,13 +480,38 @@ fn into_term(value: &syntax::ast::Type) -> TermType {
     }
 }
 
-pub fn check_pass(prog: &Program) -> Vec<UnifyError<Ident, LitType, OptCons<Ident>>> {
+pub fn check_pass(prog: &Program) -> Vec<CheckError> {
     let mut pass = Checker::new();
     pass.check_prog(prog);
-    for err in &mut pass.diag {
-        *err = pass.unifier.subst_err(err);
+    let mut errors = std::mem::take(&mut pass.errors);
+    for err in &mut errors {
+        match err {
+            CheckError::UnifyFailed {
+                typ1,
+                typ2,
+                span: _,
+            } => {
+                *typ1 = pass.unifier.subst(typ1);
+                *typ2 = pass.unifier.subst(typ2);
+            }
+            CheckError::OccurCheckFailed {
+                var: _,
+                typ,
+                span: _,
+            } => {
+                *typ = pass.unifier.subst(typ);
+            }
+            CheckError::UnifyVecDiffLen {
+                vec1,
+                vec2,
+                span: _,
+            } => {
+                *vec1 = vec1.iter().map(|t| pass.unifier.subst(t)).collect();
+                *vec2 = vec2.iter().map(|t| pass.unifier.subst(t)).collect();
+            }
+        }
     }
-    pass.diag
+    errors
 }
 
 #[test]
@@ -434,7 +541,7 @@ end
 
 function is_elem_after_append(xs: IntList, x: Int)
 begin
-    guard !is_elem(append(xs, x), x);
+    guard is_elem(append(xs, x), x) = false;
 end
 
 query is_elem_after_append(depth_step=5, depth_limit=50, answer_limit=1)
@@ -452,6 +559,11 @@ query is_elem_after_append(depth_step=5, depth_limit=50, answer_limit=1)
 
     // println!("{:#?}", errs);
     // println!("{:?}", map);
+
+    // for err in errs {
+    //     let diag: Diagnostic = err.into();
+    //     println!("{}", diag.report(src, 10));
+    // }
 
     // println!("{:#?}", prog);
     // println!("{:#?}", errs);

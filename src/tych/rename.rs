@@ -1,8 +1,4 @@
-use logos::Span;
-
 use super::*;
-
-use crate::syntax::ast::*;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum VarType {
