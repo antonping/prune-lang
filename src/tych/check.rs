@@ -1,6 +1,5 @@
 use super::*;
 
-use crate::syntax::{self};
 use crate::utils::prim::Prim;
 use crate::utils::unify::*;
 
@@ -21,7 +20,6 @@ struct ConsTyScm {
 #[allow(unused)]
 #[derive(Clone, Debug)]
 struct DataTyScm {
-    // todo: use this to check type intro. rules
     polys: Vec<Ident>,
 }
 
@@ -40,6 +38,11 @@ pub enum CheckError {
     UnifyVecDiffLen {
         vec1: Vec<TermType>,
         vec2: Vec<TermType>,
+        span: Span,
+    },
+    TypeArityMismatch {
+        actual: usize,
+        expected: usize,
         span: Span,
     },
 }
@@ -64,6 +67,12 @@ impl From<CheckError> for Diagnostic {
                 Diagnostic::error(format!("type vectors have different length!")).line_span(
                     span.clone(),
                     format!("failed to unify two vectors with lengths: {vec1:?} and {vec2:?}"),
+                )
+            }
+            CheckError::TypeArityMismatch { actual, expected, span } => {
+                Diagnostic::error(format!("type arity mismatch!")).line_span(
+                    span.clone(),
+                    format!("the type constructor has arity {actual}, but expected arity {expected}."),
                 )
             }
         }
@@ -384,6 +393,33 @@ impl Checker {
         }
     }
 
+    fn check_type(&mut self, typ: &Type) -> TermType {
+        match typ {
+            Type::Lit { lit, span: _ } => Term::Lit(*lit),
+            Type::Var { var, span: _ } => Term::Var(var.ident),
+            Type::Cons {
+                cons,
+                flds,
+                span: _,
+            } => {
+                let flds: Vec<_> = flds.iter().map(|fld| self.check_type(fld)).collect();
+                let data_scm = &self.data_ctx[&cons.ident];
+                if flds.len() != data_scm.polys.len() {
+                    self.errors.push(CheckError::TypeArityMismatch {
+                        actual: flds.len(),
+                        expected: data_scm.polys.len(),
+                        span: typ.get_span(),
+                    });
+                }
+                Term::Cons(OptCons::Some(cons.ident), flds)
+            }
+            Type::Tuple { flds, span: _ } => {
+                let flds: Vec<TermType> = flds.iter().map(|fld| self.check_type(fld)).collect();
+                Term::Cons(OptCons::None, flds)
+            }
+        }
+    }
+
     fn scan_data_ty_scm(&mut self, data_decl: &DataDecl) {
         for poly in &data_decl.polys {
             self.unifier.fresh(poly.ident);
@@ -405,7 +441,7 @@ impl Checker {
         );
 
         for cons in &data_decl.cons {
-            let flds = cons.flds.iter().map(into_term).collect();
+            let flds = cons.flds.iter().map(|fld| self.check_type(fld)).collect();
             let cons_typ = ConsTyScm {
                 polys: data_decl.polys.iter().map(|poly| poly.ident).collect(),
                 flds,
@@ -424,10 +460,10 @@ impl Checker {
         let pars = func_decl
             .pars
             .iter()
-            .map(|(_par, typ)| into_term(typ))
+            .map(|(_par, typ)| self.check_type(typ))
             .collect();
 
-        let res = into_term(&func_decl.res);
+        let res = self.check_type(&func_decl.res);
         let func_scm = FuncTyScm { polys, pars, res };
         self.func_ctx.insert(func_decl.name.ident, func_scm);
     }
@@ -461,25 +497,6 @@ impl Checker {
     }
 }
 
-fn into_term(value: &syntax::ast::Type) -> TermType {
-    match value {
-        Type::Lit { lit, span: _ } => Term::Lit(*lit),
-        Type::Var { var, span: _ } => Term::Var(var.ident),
-        Type::Cons {
-            cons,
-            flds,
-            span: _,
-        } => {
-            let flds = flds.iter().map(into_term).collect();
-            Term::Cons(OptCons::Some(cons.ident), flds)
-        }
-        Type::Tuple { flds, span: _ } => {
-            let flds: Vec<TermType> = flds.iter().map(into_term).collect();
-            Term::Cons(OptCons::None, flds)
-        }
-    }
-}
-
 pub fn check_pass(prog: &Program) -> Vec<CheckError> {
     let mut pass = Checker::new();
     pass.check_prog(prog);
@@ -509,6 +526,13 @@ pub fn check_pass(prog: &Program) -> Vec<CheckError> {
                 *vec1 = vec1.iter().map(|t| pass.unifier.subst(t)).collect();
                 *vec2 = vec2.iter().map(|t| pass.unifier.subst(t)).collect();
             }
+            CheckError::TypeArityMismatch {
+                actual: _,
+                expected: _,
+                span: _,
+            } => {
+                // do nothing
+            }
         }
     }
     errors
@@ -518,12 +542,12 @@ pub fn check_pass(prog: &Program) -> Vec<CheckError> {
 #[ignore = "just to see result"]
 fn check_test() {
     let src: &'static str = r#"
-datatype IntList where
-| Cons(Int, IntList)
+datatype List[a] where
+| Cons(a, List[a])
 | Nil
 end
 
-function append(xs: IntList, x: Int) -> IntList
+function append[a](xs: List[a], x: a) -> List[a]
 begin
     match xs with
     | Cons(head, tail) => Cons(head, append(tail, x))
@@ -531,7 +555,7 @@ begin
     end
 end
 
-function is_elem(xs: IntList, x: Int) -> Bool
+function is_elem(xs: List[Int], x: Int) -> Bool
 begin
     match xs with
     | Cons(head, tail) => if head == x then true else is_elem(tail, x) 
@@ -539,7 +563,7 @@ begin
     end
 end
 
-function is_elem_after_append(xs: IntList, x: Int)
+function is_elem_after_append(xs: List[Int], x: Int)
 begin
     guard is_elem(append(xs, x), x) = false;
 end
@@ -560,10 +584,10 @@ query is_elem_after_append(depth_step=5, depth_limit=50, answer_limit=1)
     // println!("{:#?}", errs);
     // println!("{:?}", map);
 
-    // for err in errs {
-    //     let diag: Diagnostic = err.into();
-    //     println!("{}", diag.report(src, 10));
-    // }
+    for err in errs {
+        let diag: Diagnostic = err.into();
+        println!("{}", diag.report(src, 10));
+    }
 
     // println!("{:#?}", prog);
     // println!("{:#?}", errs);
