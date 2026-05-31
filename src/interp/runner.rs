@@ -3,11 +3,11 @@ use super::solver;
 use super::strategy::*;
 use super::*;
 use crate::cli::args::{self, CliArgs};
-use crate::cli::pipeline::PipeIO;
+use crate::cli::pipeline::OutputWriter;
 
 pub struct RunnerState<'prog, 'io> {
     prog: &'prog Program,
-    pipe_io: &'io mut PipeIO,
+    output: &'io mut OutputWriter,
     config: RunnerConfig,
     stats: RunnerStats,
     ctx_cnt: usize,
@@ -20,7 +20,7 @@ pub struct RunnerState<'prog, 'io> {
 impl<'prog, 'io> RunnerState<'prog, 'io> {
     pub fn new(
         prog: &'prog Program,
-        pipe: &'io mut PipeIO,
+        output: &'io mut OutputWriter,
         args: &CliArgs,
     ) -> RunnerState<'prog, 'io> {
         let solver_obj: Box<dyn solver::common::PrimSolver> = match args.solver {
@@ -37,7 +37,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
 
         RunnerState {
             prog,
-            pipe_io: pipe,
+            output,
             config: RunnerConfig::new(args),
             stats: RunnerStats::new(),
             ctx_cnt: 0,
@@ -126,7 +126,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
         if let Some(map) = self.solver.check_sat(&brch.prims) {
             let duration = start.elapsed();
             writeln!(
-                self.pipe_io.output,
+                self.output.answer,
                 "[ANSWER]: depth = {}, solving time = {:?}",
                 brch.depth, duration
             )
@@ -138,7 +138,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
                 .collect();
 
             for (par, val) in &brch.answers {
-                writeln!(self.pipe_io.output, "{} = {}", par, val.substitute(&map)).unwrap();
+                writeln!(self.output.answer, "{} = {}", par, val.substitute(&map)).unwrap();
             }
             self.ansr_cnt += 1;
         }
@@ -247,7 +247,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             (self.config.depth_step..=self.config.depth_limit).step_by(self.config.depth_step)
         {
             writeln!(
-                self.pipe_io.stat,
+                self.output.stat,
                 "[RUN]: try depth = {}... (found answer: {})",
                 depth_limit, self.ansr_cnt
             )
@@ -258,7 +258,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             self.run_dfs_with_depth(depth_limit - self.config.depth_step + 1, depth_limit);
 
             let stat_res = self.stats.print_stat();
-            writeln!(self.pipe_io.stat, "{stat_res}").unwrap();
+            writeln!(self.output.stat, "{stat_res}").unwrap();
 
             if self.ansr_cnt >= self.config.answer_limit {
                 return self.ansr_cnt;
@@ -315,7 +315,7 @@ query is_elem_after_append(depth_step=5, depth_limit=50, answer_limit=100)
 
     // println!("{:#?}", prog);
 
-    let mut pipe_io = PipeIO::empty();
+    let mut pipe_io = OutputWriter::empty();
     let mut runner = RunnerState::new(
         &prog,
         &mut pipe_io,

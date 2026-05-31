@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Improve error message quality in type checker.
+- Refactor CLI interface implementation.
 
 ## [0.2.2] - 2026-04-26
 

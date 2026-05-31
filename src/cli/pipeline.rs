@@ -2,34 +2,39 @@ use super::args::CliArgs;
 use super::diagnostic::{DiagLevel, Diagnostic};
 use super::*;
 use crate::cli::replay::ReplayWriter;
+use crate::logic::ast::Program;
 use crate::{interp, logic, syntax, tych};
 
-pub struct PipeIO {
-    pub output: Box<dyn Write>,
+pub struct OutputWriter {
+    pub answer: Box<dyn Write>,
     pub stat: Box<dyn Write>,
     pub prog: Box<dyn Write>,
 }
 
-impl PipeIO {
-    pub fn empty() -> PipeIO {
-        PipeIO {
-            output: Box::new(io::empty()),
+impl OutputWriter {
+    pub fn empty() -> OutputWriter {
+        OutputWriter {
+            answer: Box::new(io::empty()),
             stat: Box::new(io::empty()),
             prog: Box::new(io::empty()),
         }
     }
 }
 
-pub struct Pipeline<'arg> {
-    pub args: &'arg CliArgs,
-    pub diags: Vec<Diagnostic>,
+pub struct Pipeline<'a> {
+    pub args: &'a CliArgs,
+    pub src_path: PathBuf,
+    pub src_code: String,
+    pub msg_out: Box<dyn Write + 'a>,
 }
 
-impl<'arg> Pipeline<'arg> {
-    pub fn new(args: &'arg CliArgs) -> Pipeline<'arg> {
+impl<'a> Pipeline<'a> {
+    pub fn new(args: &'a CliArgs) -> Pipeline<'a> {
         Pipeline {
             args,
-            diags: Vec::new(),
+            src_path: PathBuf::new(),
+            src_code: String::new(),
+            msg_out: Box::new(io::stderr()),
         }
     }
 
@@ -42,17 +47,20 @@ impl<'arg> Pipeline<'arg> {
             {
                 flag = true;
             }
-            self.diags.push(diag);
+            writeln!(
+                self.msg_out,
+                "{}",
+                diag.report(self.src_code.as_str(), self.args.verbosity)
+            )
+            .unwrap();
         }
         flag
     }
 
-    pub fn run_pipline(
-        &mut self,
-        src: &str,
-        pipe_io: &mut PipeIO,
-    ) -> Result<Vec<usize>, io::Error> {
-        let mut prog = self.parse_program(src)?;
+    pub fn run_compiler_pipline(&mut self) -> Result<Program, io::Error> {
+        self.read_source_code()?;
+
+        let mut prog = self.parse_program()?;
 
         self.rename_pass(&mut prog)?;
 
@@ -60,14 +68,25 @@ impl<'arg> Pipeline<'arg> {
 
         let prog = self.compile_pass(&prog);
 
-        writeln!(pipe_io.prog, "{prog}").unwrap();
-
-        let res = self.run_backend(&prog, pipe_io);
-        Ok(res)
+        Ok(prog)
     }
 
-    pub fn parse_program(&mut self, src: &str) -> Result<syntax::ast::Program, io::Error> {
-        let (prog, errs) = syntax::parser::parse_program(src);
+    pub fn read_source_code(&mut self) -> Result<(), io::Error> {
+        let src_path = PathBuf::from(&self.args.input);
+        if let Ok(src_code) = std::fs::read_to_string(&src_path) {
+            self.src_path = src_path;
+            self.src_code = src_code;
+            Ok(())
+        } else {
+            Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("file \"{src_path:?}\" doesn't exist!"),
+            ))
+        }
+    }
+
+    pub fn parse_program(&mut self) -> Result<syntax::ast::Program, io::Error> {
+        let (prog, errs) = syntax::parser::parse_program(self.src_code.as_str());
         if self.emit_diags(errs) {
             return Err(io::Error::other("failed to parse program!"));
         }
@@ -98,11 +117,12 @@ impl<'arg> Pipeline<'arg> {
         prog
     }
 
-    pub fn run_backend(&self, prog: &logic::ast::Program, pipe_io: &mut PipeIO) -> Vec<usize> {
+    pub fn run_backend(&self, prog: &logic::ast::Program) -> Result<Vec<usize>, io::Error> {
+        let mut output = create_output_writer(self.args, &self.src_path)?;
+        writeln!(output.prog, "{prog}").unwrap();
+
         let mut res_vec = Vec::new();
-
-        let mut runner = interp::runner::RunnerState::new(prog, pipe_io, self.args);
-
+        let mut runner = interp::runner::RunnerState::new(prog, &mut output, self.args);
         for query_decl in &prog.querys {
             for param in &query_decl.params {
                 runner.config_set_param(param);
@@ -110,7 +130,7 @@ impl<'arg> Pipeline<'arg> {
             let res = runner.run_iddfs_loop(query_decl.entry);
             res_vec.push(res);
         }
-        res_vec
+        Ok(res_vec)
     }
 }
 
@@ -156,74 +176,60 @@ fn create_dump_dir(src_path: &PathBuf) -> Result<PathBuf, io::Error> {
     Ok(dir_path)
 }
 
-pub fn run_pipline(args: &CliArgs) -> Result<Vec<usize>, io::Error> {
-    let src_path = PathBuf::from(&args.input);
-
-    let mut pipe_io = PipeIO::empty();
+fn create_output_writer(args: &CliArgs, src_path: &PathBuf) -> Result<OutputWriter, io::Error> {
+    let mut output = OutputWriter::empty();
     if args.dump_file {
-        let dir_path = create_dump_dir(&src_path)?;
+        let dir_path = create_dump_dir(src_path)?;
 
-        let output = File::create(dir_path.join("output.txt"))?;
+        let answer = File::create(dir_path.join("answer.txt"))?;
         if args.show_output {
-            pipe_io.output = Box::new(ReplayWriter::replay_stdout(output));
+            output.answer = Box::new(ReplayWriter::replay_stdout(answer));
         } else {
-            pipe_io.output = Box::new(output);
+            output.answer = Box::new(answer);
         }
 
         let stat = File::create(dir_path.join("stat.txt"))?;
         if args.show_stat {
-            pipe_io.stat = Box::new(ReplayWriter::replay_stdout(stat));
+            output.stat = Box::new(ReplayWriter::replay_stdout(stat));
         } else {
-            pipe_io.stat = Box::new(stat);
+            output.stat = Box::new(stat);
         }
 
         let prog = File::create(dir_path.join("prog.txt"))?;
         if args.show_prog {
-            pipe_io.prog = Box::new(ReplayWriter::replay_stdout(prog));
+            output.prog = Box::new(ReplayWriter::replay_stdout(prog));
         } else {
-            pipe_io.prog = Box::new(prog);
+            output.prog = Box::new(prog);
         }
     } else {
         if args.show_output {
-            pipe_io.output = Box::new(io::stdout());
+            output.answer = Box::new(io::stdout());
         }
 
         if args.show_stat {
-            pipe_io.stat = Box::new(io::stdout());
+            output.stat = Box::new(io::stdout());
         }
 
         if args.show_prog {
-            pipe_io.prog = Box::new(io::stdout());
+            output.prog = Box::new(io::stdout());
         }
     }
-
-    let src = std::fs::read_to_string(src_path)?;
-    let mut pipe = Pipeline::new(args);
-    match pipe.run_pipline(&src, &mut pipe_io) {
-        Ok(res) => {
-            for diag in pipe.diags.into_iter() {
-                eprintln!("{}", diag.report(&src, args.verbosity));
-            }
-            Ok(res)
-        }
-        Err(err) => {
-            for diag in pipe.diags.into_iter() {
-                eprintln!("{}", diag.report(&src, args.verbosity));
-            }
-            Err(err)
-        }
-    }
+    Ok(output)
 }
 
 pub fn run_cli_pipeline() -> Result<Vec<usize>, io::Error> {
     let args = args::parse_cli_args();
-    let res = pipeline::run_pipline(&args)?;
+    let mut pipe = Pipeline::new(&args);
+    let prog = pipe.run_compiler_pipline()?;
+    let res = pipe.run_backend(&prog)?;
     Ok(res)
 }
 
 pub fn run_test_pipeline(prog_name: PathBuf) -> Result<Vec<usize>, io::Error> {
     let args = args::get_test_cli_args(prog_name);
-    let res = pipeline::run_pipline(&args)?;
+    let mut pipe = Pipeline::new(&args);
+    let prog = pipe.run_compiler_pipline()?;
+    let res = pipe.run_backend(&prog)?;
     Ok(res)
 }
 
@@ -233,6 +239,8 @@ pub fn run_bench_pipeline(
     depth_limit: usize,
 ) -> Result<Vec<usize>, io::Error> {
     let args = args::get_bench_cli_args(prog_name, heuristic, depth_limit);
-    let res = pipeline::run_pipline(&args)?;
+    let mut pipe = Pipeline::new(&args);
+    let prog = pipe.run_compiler_pipline()?;
+    let res = pipe.run_backend(&prog)?;
     Ok(res)
 }
