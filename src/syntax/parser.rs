@@ -333,9 +333,9 @@ impl<'src> Parser<'src> {
         let mut opr_stack: Vec<Prim> = Vec::new();
 
         fn squash(expr_stack: &mut Vec<(Expr, Span)>, opr_stack: &mut Vec<Prim>) {
-            let (rhs, span1) = expr_stack.pop().unwrap();
+            let (rhs, span2) = expr_stack.pop().unwrap();
             let opr = opr_stack.pop().unwrap();
-            let (lhs, span2) = expr_stack.pop().unwrap();
+            let (lhs, span1) = expr_stack.pop().unwrap();
             let span = Span {
                 start: span1.start,
                 end: span2.end,

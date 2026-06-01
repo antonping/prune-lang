@@ -9,5 +9,5 @@ the expression here has type Int, but expected a.
 
 [Error]: cannot match type!
 3 |     x + 42 // this should fail at type checking
-  |         ^
+  |     ^~~~~~
 the expression here has type a, but expected Int.
