@@ -44,17 +44,6 @@ fn test_concat_backward() {
 }
 
 #[test]
-fn test_polymorphism() {
-    cli::pipeline::run_test_pipeline(PathBuf::from("./examples/features/polymorphism.pr")).unwrap();
-}
-
-#[test]
-fn test_polymorphism_fail() {
-    cli::pipeline::run_test_pipeline(PathBuf::from("./examples/features/polymorphism_fail.pr"))
-        .expect_err("this should fail at type checking!");
-}
-
-#[test]
 fn test_smt_sat() {
     cli::pipeline::run_test_pipeline(PathBuf::from("./examples/features/smt_sat.pr")).unwrap();
 }

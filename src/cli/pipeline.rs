@@ -233,6 +233,14 @@ pub fn run_test_pipeline(prog_name: PathBuf) -> Result<Vec<usize>, io::Error> {
     Ok(res)
 }
 
+pub fn run_test_diag_pipeline(prog_name: PathBuf, msg_out: &mut Vec<u8>) -> Result<(), io::Error> {
+    let args = args::get_test_cli_args(prog_name);
+    let mut pipe = Pipeline::new(&args);
+    pipe.msg_out = Box::new(msg_out);
+    let _prog = pipe.run_compiler_pipline()?;
+    Ok(())
+}
+
 pub fn run_bench_pipeline(
     prog_name: PathBuf,
     heuristic: args::Heuristic,

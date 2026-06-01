@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add type introduction rules in type checker.
+- Add snapshot testing for diagnostic messages.
 
 ### Changed
 
