@@ -1,0 +1,11 @@
+function g(x: Int) -> Int
+begin
+    x
+end
+
+function f() -> Int
+begin
+    g(1, 2)
+end
+
+query f(depth_step=1)

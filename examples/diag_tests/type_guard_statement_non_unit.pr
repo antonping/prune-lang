@@ -1,0 +1,7 @@
+function f()
+begin
+    guard 1;
+    ()
+end
+
+query f(depth_step=1)

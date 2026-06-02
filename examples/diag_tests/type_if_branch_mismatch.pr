@@ -1,0 +1,6 @@
+function f() -> Int
+begin
+    if true then 1 else false
+end
+
+query f(depth_step=1)

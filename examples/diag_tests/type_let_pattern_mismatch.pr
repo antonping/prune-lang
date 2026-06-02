@@ -1,0 +1,11 @@
+datatype Nat where
+| Z
+end
+
+function f()
+begin
+    let Z = 1;
+    ()
+end
+
+query f(depth_step=1)

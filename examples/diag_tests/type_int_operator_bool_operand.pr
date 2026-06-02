@@ -1,0 +1,6 @@
+function f() -> Int
+begin
+    1 + true
+end
+
+query f(depth_step=1)

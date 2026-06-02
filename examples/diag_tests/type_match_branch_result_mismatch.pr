@@ -1,0 +1,14 @@
+datatype Nat where
+| Z
+| S
+end
+
+function f(x: Nat) -> Int
+begin
+    match x with
+    | Z => 0
+    | S => true
+    end
+end
+
+query f(depth_step=1)

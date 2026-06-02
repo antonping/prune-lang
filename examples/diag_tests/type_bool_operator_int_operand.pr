@@ -1,0 +1,6 @@
+function f() -> Bool
+begin
+    true && 1
+end
+
+query f(depth_step=1)

@@ -1,0 +1,6 @@
+function f()
+begin
+    if 1 then () else ()
+end
+
+query f(depth_step=1)

@@ -1,0 +1,12 @@
+datatype Nat where
+| Z
+end
+
+function f(x: Int)
+begin
+    match x with
+    | Z => ()
+    end
+end
+
+query f(depth_step=1)
