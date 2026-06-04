@@ -1,0 +1,4 @@
+datatype Foo where
+| A
+| A
+end

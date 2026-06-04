@@ -1,0 +1,7 @@
+function example(x: Int) -> Int
+begin
+    condition
+    | x < 0 => 0 - x
+    | x >= 0 => true // condition branches must have same type
+    end
+end

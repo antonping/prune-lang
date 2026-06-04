@@ -1,0 +1,11 @@
+---
+source: tests/common/mod.rs
+expression: "String::from_utf8(msg_out).unwrap()"
+---
+[Error]: multipile function varible definition!
+1 | function f(x: Int) -> Int
+  |          ^
+the identifier f is defined here
+6 | function f(x: Int) -> Int
+  |          ^
+and it is defined here again

@@ -1,0 +1,9 @@
+function add(x: Int, y: Int) -> Int
+begin
+    x + y
+end
+
+function example(a: Int) -> Int
+begin
+    add(a, true) // function argument type mismatch
+end

@@ -1,0 +1,4 @@
+function example[a](x: a) -> a
+begin
+    x + 42 // this should fail at type checking
+end

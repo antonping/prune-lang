@@ -1,0 +1,7 @@
+function example(x: Int, y: Int) -> Int
+begin
+    if x + y then // if condition must be Bool
+        1
+    else
+        2
+end

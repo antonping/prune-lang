@@ -1,0 +1,13 @@
+datatype Option[a] where
+| None
+| Some(a)
+end
+
+function example(opt: Option[Int])
+begin
+    let _ = 
+        match opt with
+        | None => 42
+        | Some(_) => true // match branches must have same type
+        end;
+end

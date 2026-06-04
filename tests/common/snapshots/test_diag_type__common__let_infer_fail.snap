@@ -1,0 +1,8 @@
+---
+source: tests/common/mod.rs
+expression: "String::from_utf8(msg_out).unwrap()"
+---
+[Error]: cannot match type!
+10 |     Cons(42, xs) // failed to unify, element type inferred as Bool by context
+   |              ^~
+the expression here has type Int, but expected Bool.

@@ -1,0 +1,4 @@
+function example(x: Int)
+begin
+    guard x = true; // cannot match Int with Bool
+end

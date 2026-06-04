@@ -1,0 +1,11 @@
+---
+source: tests/common/mod.rs
+expression: "String::from_utf8(msg_out).unwrap()"
+---
+[Error]: multipile datatype varible definition!
+1 | datatype Foo where
+  |          ^~~
+the identifier Foo is defined here
+5 | datatype Foo where
+  |          ^~~
+and it is defined here again

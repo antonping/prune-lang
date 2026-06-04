@@ -1,0 +1,8 @@
+---
+source: tests/common/mod.rs
+expression: "String::from_utf8(msg_out).unwrap()"
+---
+[Error]: unbounded value varible!
+3 |     x + y
+  |         ^
+the identifier "y" is not defined

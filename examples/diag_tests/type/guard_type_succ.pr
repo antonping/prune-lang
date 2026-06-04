@@ -1,0 +1,4 @@
+function example(x: Int, y: Int)
+begin
+    guard x = y;
+end

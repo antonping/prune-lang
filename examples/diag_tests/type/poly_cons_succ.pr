@@ -1,0 +1,8 @@
+datatype Box[a] where
+| MkBox(a)
+end
+
+function example[a](x: a) -> Box[a]
+begin
+    MkBox(x)
+end

@@ -1,0 +1,6 @@
+function f()
+begin
+    let x = 42;
+    let x = x > 0;
+    guard x = x;
+end

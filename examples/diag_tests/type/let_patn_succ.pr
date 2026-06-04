@@ -1,0 +1,5 @@
+function example(x: Int, y: Int) -> Int
+begin
+    let (a, b) = (x, y);
+    a + b
+end

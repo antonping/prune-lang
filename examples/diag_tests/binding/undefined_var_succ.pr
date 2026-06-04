@@ -1,0 +1,4 @@
+function f(x: Int) -> Int
+begin
+    x
+end

@@ -1,0 +1,5 @@
+function f(x: Int) -> Int
+begin
+    let y = x + 1;
+    y
+end

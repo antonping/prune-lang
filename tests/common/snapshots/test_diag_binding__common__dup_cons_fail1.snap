@@ -1,0 +1,11 @@
+---
+source: tests/common/mod.rs
+expression: "String::from_utf8(msg_out).unwrap()"
+---
+[Error]: multipile constructor varible definition!
+2 | | A
+  |   ^
+the identifier A is defined here
+3 | | A
+  |   ^
+and it is defined here again

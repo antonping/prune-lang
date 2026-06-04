@@ -1,0 +1,11 @@
+datatype List[a] where
+| Nil
+| Cons(a, List[a])
+end
+
+function example() -> List[Int]
+begin
+    let xs = Nil;
+    let _ = Cons(true, xs);
+    Cons(42, xs) // failed to unify, element type inferred as Bool by context
+end

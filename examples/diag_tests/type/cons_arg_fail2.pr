@@ -1,0 +1,8 @@
+datatype Pair[a, b] where
+| MkPair(a, b)
+end
+
+function example(x: Int) -> Pair[Int, Bool]
+begin
+    MkPair(x, x) // constructor argument type mismatch
+end

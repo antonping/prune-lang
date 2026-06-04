@@ -1,0 +1,7 @@
+datatype Foo where
+| A
+end
+
+datatype Bar where
+| B
+end

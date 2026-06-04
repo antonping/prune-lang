@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add type introduction rules in type checker.
 - Add snapshot testing for diagnostic messages.
+- Add more test cases for semantic analyzer.
 
 ### Changed
 

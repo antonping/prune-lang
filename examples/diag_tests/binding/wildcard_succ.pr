@@ -1,0 +1,4 @@
+function f(x: Int, y: Int)
+begin
+    let (_, _) = (x, y);
+end

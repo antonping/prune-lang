@@ -1,0 +1,11 @@
+datatype List[a] where
+| Nil
+| Cons(a, List[a])
+end
+
+function example() -> List[Int]
+begin
+    let xs = Nil;
+    let _ = Cons(true, Nil);
+    Cons(42, xs)
+end
