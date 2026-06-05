@@ -79,7 +79,6 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
         };
 
         if self.config.heuristic == args::Heuristic::LookAhead {
-            self.stats.step_la();
             call.lookahead_update(rules);
         }
 
@@ -115,7 +114,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
                     self.solve_answer(&brch);
                 }
             } else if brch.depth + brch.calls.len() <= depth_end {
-                self.run_branch_step(&mut brch);
+                self.run_branch_step(&mut brch, depth_end);
             }
         }
     }
@@ -144,7 +143,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
         }
     }
 
-    fn run_branch_step(&mut self, brch: &mut Branch) {
+    fn run_branch_step(&mut self, brch: &mut Branch, depth: usize) {
         let call_idx = match self.config.heuristic {
             args::Heuristic::LeftBiased => brch.left_biased_strategy(),
             args::Heuristic::Interleave => brch.naive_strategy(1),
@@ -157,22 +156,41 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
         let mut looks = brch.calls[call_idx].looks.clone();
         looks.shuffle(&mut self.rng);
 
+        self.stats.step();
         for rule_idx in looks.iter().rev() {
-            self.stats.step();
-            self.ctx_cnt += 1;
-            if let Ok(new_brch) = self.apply_rule(brch, call_idx, *rule_idx) {
-                self.stack.push(new_brch);
+            if let Some(mut new_brch) = self.apply_rule(brch, call_idx, *rule_idx) {
+                if let Some(_steps) = self.apply_reduction(&mut new_brch, depth) {
+                    self.stack.push(new_brch);
+                }
             }
         }
     }
 
-    fn apply_rule(
-        &mut self,
-        brch: &Branch,
-        call_idx: usize,
-        rule_idx: usize,
-    ) -> Result<Branch, ()> {
+    fn apply_reduction(&mut self, brch: &mut Branch, depth: usize) -> Option<usize> {
+        let mut steps = 1;
+        while brch.depth + brch.calls.len() <= depth {
+            if brch.calls.is_empty() {
+                return Some(1000);
+            }
+            if let Some(call_idx) = brch.check_reduction() {
+                let looks = &brch.calls[call_idx].looks;
+                assert!(looks.len() <= 1);
+                if looks.is_empty() {
+                    break;
+                } else {
+                    *brch = self.apply_rule(&brch, call_idx, brch.calls[call_idx].looks[0])?;
+                    steps += 1;
+                }
+            } else {
+                return Some(steps);
+            }
+        }
+        None
+    }
+
+    fn apply_rule(&mut self, brch: &Branch, call_idx: usize, rule_idx: usize) -> Option<Branch> {
         let rules = &self.prog.preds[&brch.calls[call_idx].pred].rules;
+        self.ctx_cnt += 1;
         let rule_ctx = rules[rule_idx].tag_ctx(self.ctx_cnt);
 
         let call = &brch.calls[call_idx];
@@ -181,7 +199,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
         let mut unifier: Unifier<IdentCtx, LitVal, OptCons<Ident>> = Unifier::new();
         for (par, arg) in rule_ctx.head.iter().zip(call.args.iter()) {
             if unifier.unify(par, arg).is_err() {
-                return Err(());
+                return None;
             }
         }
 
@@ -194,7 +212,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
         }
 
         if !super::progagate::propagate_unify(&mut new_brch.prims, &mut unifier) {
-            return Err(());
+            return None;
         }
 
         let mut new_history = call.history.clone();
@@ -213,7 +231,6 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             };
 
             if self.config.heuristic == args::Heuristic::LookAhead {
-                self.stats.step_la();
                 new_call.lookahead_update(&self.prog.preds[pred].rules);
             }
 
@@ -230,7 +247,6 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             }
             // update lookahead information if any information is propagated
             if dirty_flag && self.config.heuristic == args::Heuristic::LookAhead {
-                self.stats.step_la();
                 call.lookahead_update(&self.prog.preds[&call.pred].rules);
             }
         }
@@ -239,7 +255,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             *val = unifier.subst(val);
         }
 
-        Ok(new_brch)
+        Some(new_brch)
     }
 
     pub fn run_iddfs_loop(&mut self, entry: Ident) -> usize {

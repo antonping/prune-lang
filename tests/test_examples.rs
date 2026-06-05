@@ -54,6 +54,11 @@ fn test_avl_tree_good() {
     run_example_unsat("sym_exec/avl_tree_good.pr");
 }
 #[test]
+#[ignore = "this test cost too much time!"]
+fn test_avl_tree_bad() {
+    run_example_sat("sym_exec/avl_tree_bad.pr");
+}
+#[test]
 fn test_avl_tree_gen() {
     run_example("test_gen/avl_tree_gen.pr");
 }

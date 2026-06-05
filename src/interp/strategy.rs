@@ -138,6 +138,15 @@ impl Branch {
         let (idx, _) = vec.iter().enumerate().min_by_key(|(_idx, br)| *br).unwrap();
         idx
     }
+
+    pub fn check_reduction(&self) -> Option<usize> {
+        for call_idx in 0..self.calls.len() {
+            if self.calls[call_idx].looks.len() <= 1 {
+                return Some(call_idx);
+            }
+        }
+        None
+    }
 }
 
 #[derive(Clone, Debug)]
