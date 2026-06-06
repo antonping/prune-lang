@@ -1,4 +1,4 @@
-use criterion::{Criterion, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use prune_lang::cli::{self, args::Heuristic};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -14,17 +14,19 @@ const HEURISTICS: [Heuristic; 5] = [
 ];
 
 fn bench_concat_backward(c: &mut Criterion) {
-    let mut group = c.benchmark_group("concat_backward");
+    const DEPTH_LIMITS: [usize; 10] = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+
+    let mut group = c.benchmark_group(format!("concat_backward"));
     group.measurement_time(Duration::from_secs(10));
     group.sample_size(10);
 
-    let depth_limits = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-
     for heuristic in HEURISTICS.iter() {
-        for depth_limit in depth_limits.iter() {
-            group.bench_function(
-                format!("concat_backward({:?}, {})", heuristic, depth_limit),
-                |b| {
+        for depth_limit in DEPTH_LIMITS.iter() {
+            let start = Instant::now();
+            group.bench_with_input(
+                BenchmarkId::new(format!("concat_backward({:?})", heuristic), depth_limit),
+                depth_limit,
+                |b, depth_limit| {
                     b.iter(|| {
                         cli::pipeline::run_bench_pipeline(
                             PathBuf::from("./benches/concat_backward.pr"),
@@ -32,27 +34,32 @@ fn bench_concat_backward(c: &mut Criterion) {
                             *depth_limit,
                         )
                         .unwrap()
-                    })
+                    });
                 },
             );
+            if start.elapsed().as_secs() > TIMEOUT {
+                break; // remaining tests will cost too much time!
+            }
         }
     }
+
     group.finish();
 }
 
 fn bench_avl_tree_gen(c: &mut Criterion) {
+    const DEPTH_LIMITS: [usize; 9] = [20, 22, 24, 26, 28, 30, 32, 34, 36];
+
     let mut group = c.benchmark_group("avl_tree_gen");
     group.measurement_time(Duration::from_secs(10));
     group.sample_size(10);
 
-    let depth_limits = [20, 22, 24, 26, 28, 30, 32, 34, 36];
-
     for heuristic in HEURISTICS.iter() {
-        for depth_limit in depth_limits.iter() {
+        for depth_limit in DEPTH_LIMITS.iter() {
             let start = Instant::now();
-            group.bench_function(
-                format!("avl_tree_gen({:?}, {})", heuristic, depth_limit),
-                |b| {
+            group.bench_with_input(
+                BenchmarkId::new(format!("avl_tree_gen({:?})", heuristic), depth_limit),
+                depth_limit,
+                |b, depth_limit| {
                     b.iter(|| {
                         cli::pipeline::run_bench_pipeline(
                             PathBuf::from("./benches/avl_tree_gen.pr"),
@@ -72,18 +79,19 @@ fn bench_avl_tree_gen(c: &mut Criterion) {
 }
 
 fn bench_avl_tree_good(c: &mut Criterion) {
+    const DEPTH_LIMITS: [usize; 9] = [20, 22, 24, 26, 28, 30, 32, 34, 36];
+
     let mut group = c.benchmark_group("avl_tree_good");
     group.measurement_time(Duration::from_secs(10));
     group.sample_size(10);
 
-    let depth_limits = [20, 22, 24, 26, 28, 30, 32, 34, 36];
-
     for heuristic in HEURISTICS.iter() {
-        for depth_limit in depth_limits.iter() {
+        for depth_limit in DEPTH_LIMITS.iter() {
             let start = Instant::now();
-            group.bench_function(
-                format!("avl_tree_good({:?}, {})", heuristic, depth_limit),
-                |b| {
+            group.bench_with_input(
+                BenchmarkId::new(format!("avl_tree_good({:?})", heuristic), depth_limit),
+                depth_limit,
+                |b, depth_limit| {
                     b.iter(|| {
                         cli::pipeline::run_bench_pipeline(
                             PathBuf::from("./benches/avl_tree_good.pr"),
@@ -103,18 +111,19 @@ fn bench_avl_tree_good(c: &mut Criterion) {
 }
 
 fn bench_avl_tree_bad(c: &mut Criterion) {
+    const DEPTH_LIMITS: [usize; 9] = [20, 22, 24, 26, 28, 30, 32, 34, 36];
+
     let mut group = c.benchmark_group("avl_tree_bad");
     group.measurement_time(Duration::from_secs(10));
     group.sample_size(10);
 
-    let depth_limits = [20, 22, 24, 26, 28, 30, 32, 34, 36];
-
     for heuristic in HEURISTICS.iter() {
-        for depth_limit in depth_limits.iter() {
+        for depth_limit in DEPTH_LIMITS.iter() {
             let start = Instant::now();
-            group.bench_function(
-                format!("avl_tree_bad({:?}, {})", heuristic, depth_limit),
-                |b| {
+            group.bench_with_input(
+                BenchmarkId::new(format!("avl_tree_bad({:?})", heuristic), depth_limit),
+                depth_limit,
+                |b, depth_limit| {
                     b.iter(|| {
                         cli::pipeline::run_bench_pipeline(
                             PathBuf::from("./benches/avl_tree_bad.pr"),
@@ -134,18 +143,19 @@ fn bench_avl_tree_bad(c: &mut Criterion) {
 }
 
 fn bench_unary_arith(c: &mut Criterion) {
+    const DEPTH_LIMITS: [usize; 10] = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+
     let mut group = c.benchmark_group("unary_arith");
     group.measurement_time(Duration::from_secs(10));
     group.sample_size(10);
 
-    let depth_limits = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-
     for heuristic in HEURISTICS.iter() {
-        for depth_limit in depth_limits.iter() {
+        for depth_limit in DEPTH_LIMITS.iter() {
             let start = Instant::now();
-            group.bench_function(
-                format!("unary_arith({:?}, {})", heuristic, depth_limit),
-                |b| {
+            group.bench_with_input(
+                BenchmarkId::new(format!("unary_arith({:?})", heuristic), depth_limit),
+                depth_limit,
+                |b, depth_limit| {
                     b.iter(|| {
                         cli::pipeline::run_bench_pipeline(
                             PathBuf::from("./benches/unary_arith.pr"),
@@ -165,18 +175,19 @@ fn bench_unary_arith(c: &mut Criterion) {
 }
 
 fn bench_binary_arith(c: &mut Criterion) {
+    const DEPTH_LIMITS: [usize; 9] = [20, 22, 24, 26, 28, 30, 32, 34, 36];
+
     let mut group = c.benchmark_group("binary_arith");
     group.measurement_time(Duration::from_secs(10));
     group.sample_size(10);
 
-    let depth_limits = [20, 22, 24, 26, 28, 30, 32, 34, 36];
-
     for heuristic in HEURISTICS.iter() {
-        for depth_limit in depth_limits.iter() {
+        for depth_limit in DEPTH_LIMITS.iter() {
             let start = Instant::now();
-            group.bench_function(
-                format!("binary_arith({:?}, {})", heuristic, depth_limit),
-                |b| {
+            group.bench_with_input(
+                BenchmarkId::new(format!("binary_arith({:?})", heuristic), depth_limit),
+                depth_limit,
+                |b, depth_limit| {
                     b.iter(|| {
                         cli::pipeline::run_bench_pipeline(
                             PathBuf::from("./benches/binary_arith.pr"),

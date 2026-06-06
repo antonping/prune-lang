@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Improve error message quality in type checker.
 - Refactor CLI interface implementation.
+- Refactor benchmark tests.
 
 ### Fixed
 
