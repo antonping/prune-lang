@@ -108,13 +108,12 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             if self.ansr_cnt >= self.config.answer_limit {
                 return;
             }
-            assert!(brch.depth <= depth_end);
             if brch.calls.is_empty() {
-                if brch.depth >= depth_start {
+                if brch.depth >= depth_start && brch.depth <= depth_end {
                     self.solve_answer(&brch);
                 }
             } else if brch.depth + brch.calls.len() <= depth_end {
-                self.run_branch_step(&mut brch, depth_end);
+                self.run_branch_step(&mut brch);
             }
         }
     }
@@ -143,12 +142,15 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
         }
     }
 
-    fn run_branch_step(&mut self, brch: &mut Branch, depth: usize) {
+    fn run_branch_step(&mut self, brch: &mut Branch) {
         let call_idx = match self.config.heuristic {
             args::Heuristic::LeftBiased => brch.left_biased_strategy(),
             args::Heuristic::Interleave => brch.naive_strategy(1),
             args::Heuristic::StructRecur => brch.struct_recur_strategy(),
-            args::Heuristic::LookAhead => brch.lookahead_strategy(),
+            args::Heuristic::LookAhead => {
+                // brch.lookahead_strategy()
+                self.lookahead_choose(brch)
+            }
             args::Heuristic::Random => brch.random_strategy(&mut self.rng),
         };
 
@@ -158,34 +160,70 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
 
         self.stats.step();
         for rule_idx in looks.iter().rev() {
-            if let Some(mut new_brch) = self.apply_rule(brch, call_idx, *rule_idx) {
-                if let Some(_steps) = self.apply_reduction(&mut new_brch, depth) {
-                    self.stack.push(new_brch);
-                }
+            if let Some((brch, _steps)) = self.apply_rule_with_reduction(brch, call_idx, *rule_idx)
+            {
+                self.stack.push(brch);
             }
         }
     }
 
-    fn apply_reduction(&mut self, brch: &mut Branch, depth: usize) -> Option<usize> {
-        let mut steps = 1;
-        while brch.depth + brch.calls.len() <= depth {
-            if brch.calls.is_empty() {
-                return Some(1000);
+    fn lookahead_choose(&mut self, brch: &Branch) -> usize {
+        assert!(!brch.calls.is_empty());
+        let mut best_score: f32 = f32::MAX;
+        let mut best_idx: usize = 0;
+
+        let mut calls: Vec<usize> = (0..brch.calls.len()).into_iter().collect();
+        calls.sort_by_key(|call| brch.calls[*call].looks.len());
+
+        for call_idx in calls.into_iter() {
+            self.stats.step_la();
+
+            let mut vec = Vec::new();
+            for rule_idx in brch.calls[call_idx].looks.iter().rev() {
+                if let Some((brch, steps)) =
+                    self.apply_rule_with_reduction(brch, call_idx, *rule_idx)
+                {
+                    if !brch.calls.is_empty() {
+                        vec.push(steps);
+                    }
+                }
             }
+            let tau = tau_function(&vec);
+            if tau < 1.2 {
+                return call_idx;
+            }
+            let score = tau + (brch.calls[call_idx].history.len() as f32) * (0.001 as f32);
+            if score < best_score {
+                best_score = score;
+                best_idx = call_idx;
+            }
+        }
+        // println!("best_score = {}, best_idx = {}", best_score, best_idx);
+        best_idx
+    }
+
+    fn apply_rule_with_reduction(
+        &mut self,
+        brch: &Branch,
+        call_idx: usize,
+        rule_idx: usize,
+    ) -> Option<(Branch, usize)> {
+        const MAX_REDUCTION: usize = 10;
+        let mut brch = self.apply_rule(brch, call_idx, rule_idx)?;
+        for steps in 1..MAX_REDUCTION {
             if let Some(call_idx) = brch.check_reduction() {
                 let looks = &brch.calls[call_idx].looks;
                 assert!(looks.len() <= 1);
                 if looks.is_empty() {
-                    break;
+                    return Some((brch, steps));
                 } else {
-                    *brch = self.apply_rule(&brch, call_idx, brch.calls[call_idx].looks[0])?;
-                    steps += 1;
+                    brch = self.apply_rule(&brch, call_idx, brch.calls[call_idx].looks[0])?;
                 }
             } else {
-                return Some(steps);
+                return Some((brch, steps));
             }
         }
-        None
+        Some((brch, MAX_REDUCTION))
     }
 
     fn apply_rule(&mut self, brch: &Branch, call_idx: usize, rule_idx: usize) -> Option<Branch> {
@@ -245,7 +283,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
                     dirty_flag = true;
                 }
             }
-            // update lookahead information if any information is propagated
+            // update look-ahead information if any information is propagated
             if dirty_flag && self.config.heuristic == args::Heuristic::LookAhead {
                 call.lookahead_update(&self.prog.preds[&call.pred].rules);
             }

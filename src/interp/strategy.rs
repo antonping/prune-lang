@@ -254,3 +254,64 @@ impl Default for History {
         Self::new()
     }
 }
+
+// input: a vector of positive integer [a, b, ..., z]
+// output: solution of equation x^-a + x^-b + ... + x^-z = 1
+pub fn tau_function(vec: &Vec<usize>) -> f32 {
+    if vec.len() <= 1 {
+        return 1.0;
+    }
+
+    // Newton's method for finding numerical solutions
+    let mut x: f32 = 1.0;
+    for _ in 0..100 {
+        // g(x) = sum(x^(-w_i)) - 1
+        let mut g: f32 = -1.0;
+        for &w in vec {
+            g += x.powi(-(w as i32));
+        }
+
+        // g'(x) = sum(-w_i * x^(-w_i - 1))
+        let mut gp: f32 = 0.0;
+        for &w in vec {
+            gp -= (w as f32) * x.powi(-(w as i32) - 1);
+        }
+
+        let step = g / gp;
+        let nx = x - step;
+
+        if step.abs() < 1e-4 {
+            return nx;
+        } else {
+            x = nx;
+        }
+    }
+    panic!("Newton's method fails to converge after 100 iterations!")
+}
+
+#[test]
+fn test_tau_function() {
+    assert_eq!(tau_function(&vec![]), 1.0);
+
+    assert_eq!(tau_function(&vec![1]), 1.0);
+
+    assert_eq!(tau_function(&vec![2]), 1.0);
+
+    let x = tau_function(&vec![1, 1]);
+    assert!((x - 2.0).abs() < 1e-4);
+
+    let x = tau_function(&vec![1, 1, 1]);
+    assert!((x - 3.0).abs() < 1e-4);
+
+    let x = tau_function(&vec![2, 2]);
+    assert!((x - 1.41421356).abs() < 1e-4);
+
+    let x = tau_function(&vec![1, 2]);
+    assert!((x - 1.61803399).abs() < 1e-4);
+
+    let x = tau_function(&vec![1, 2, 3]);
+    assert!((x - 1.83928676).abs() < 1e-4);
+
+    let x = tau_function(&vec![5, 5]);
+    assert!((x - 1.14869835).abs() < 1e-4);
+}
