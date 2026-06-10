@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add snapshot testing for diagnostic messages.
 - Add more test cases for semantic analyzer.
 - Refactor query runner with reduction pass.
+- Introduce small-first branching heuristic.
 
 ### Changed
 

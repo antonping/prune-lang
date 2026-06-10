@@ -5,10 +5,11 @@ use std::time::{Duration, Instant};
 
 const TIMEOUT: u64 = 30;
 
-const HEURISTICS: [Heuristic; 5] = [
+const HEURISTICS: [Heuristic; 6] = [
     Heuristic::LeftBiased,
     Heuristic::Interleave,
     Heuristic::StructRecur,
+    Heuristic::SmallFirst,
     Heuristic::LookAhead,
     Heuristic::Random,
 ];

@@ -78,19 +78,16 @@ impl Branch {
         self.calls.remove(call_idx)
     }
 
-    #[allow(unused)]
     pub fn random_strategy(&mut self, rng: &mut rand::rngs::ThreadRng) -> usize {
         assert!(!self.calls.is_empty());
         rng.random_range(0..self.calls.len())
     }
 
-    #[allow(unused)]
     pub fn left_biased_strategy(&mut self) -> usize {
         assert!(!self.calls.is_empty());
         0
     }
 
-    #[allow(unused)]
     pub fn naive_strategy(&mut self, n: usize) -> usize {
         assert!(!self.calls.is_empty());
 
@@ -107,7 +104,6 @@ impl Branch {
         }
     }
 
-    #[allow(unused)]
     pub fn struct_recur_strategy(&mut self) -> usize {
         assert!(!self.calls.is_empty());
 
@@ -124,15 +120,12 @@ impl Branch {
         }
     }
 
-    pub fn lookahead_strategy(&mut self) -> usize {
+    pub fn small_first_strategy(&mut self) -> usize {
         let mut vec = Vec::new();
 
         for call_idx in 0..self.calls.len() {
             let call = &self.calls[call_idx];
-            if call.looks.len() <= 1 {
-                return call_idx;
-            }
-            vec.push(2 * call.looks.len() + call.history.len());
+            vec.push(1000 * call.looks.len() + call.history.len());
         }
 
         let (idx, _) = vec.iter().enumerate().min_by_key(|(_idx, br)| *br).unwrap();

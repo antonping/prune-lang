@@ -77,10 +77,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             looks: (0..rules.len()).collect(),
             history: History::new(),
         };
-
-        if self.config.heuristic == args::Heuristic::LookAhead {
-            call.lookahead_update(rules);
-        }
+        call.lookahead_update(rules);
 
         let brch = Branch {
             depth: 0,
@@ -147,10 +144,8 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             args::Heuristic::LeftBiased => brch.left_biased_strategy(),
             args::Heuristic::Interleave => brch.naive_strategy(1),
             args::Heuristic::StructRecur => brch.struct_recur_strategy(),
-            args::Heuristic::LookAhead => {
-                // brch.lookahead_strategy()
-                self.lookahead_choose(brch)
-            }
+            args::Heuristic::SmallFirst => brch.small_first_strategy(),
+            args::Heuristic::LookAhead => self.lookahead_choose(brch),
             args::Heuristic::Random => brch.random_strategy(&mut self.rng),
         };
 
@@ -268,9 +263,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
                 history: new_history.clone(),
             };
 
-            if self.config.heuristic == args::Heuristic::LookAhead {
-                new_call.lookahead_update(&self.prog.preds[pred].rules);
-            }
+            new_call.lookahead_update(&self.prog.preds[pred].rules);
 
             new_brch.insert(call_idx, new_call);
         }
@@ -284,7 +277,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
                 }
             }
             // update look-ahead information if any information is propagated
-            if dirty_flag && self.config.heuristic == args::Heuristic::LookAhead {
+            if dirty_flag {
                 call.lookahead_update(&self.prog.preds[&call.pred].rules);
             }
         }
