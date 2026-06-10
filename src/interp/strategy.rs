@@ -38,7 +38,7 @@ impl Branch {
             polys: Vec::new(),
             args: pars.iter().map(|par| Term::Var(par.tag_ctx(0))).collect(),
             looks: (0..rule_cnt).collect(),
-            history: History::new(),
+            depth: 0,
         };
 
         Branch {
@@ -49,12 +49,6 @@ impl Branch {
                 .collect(),
             prims: Vec::new(),
             calls: vec![call],
-        }
-    }
-
-    pub fn clear_history(&mut self) {
-        for call in &mut self.calls {
-            call.history.clear();
         }
     }
 
@@ -88,48 +82,19 @@ impl Branch {
         0
     }
 
-    pub fn naive_strategy(&mut self, n: usize) -> usize {
-        assert!(!self.calls.is_empty());
-
-        let idx = self
-            .calls
-            .iter()
-            .position(|call| call.history.naive_strategy_pred(n));
-
-        if let Some(idx) = idx {
-            idx
-        } else {
-            self.clear_history();
-            self.naive_strategy(n)
-        }
-    }
-
-    pub fn struct_recur_strategy(&mut self) -> usize {
-        assert!(!self.calls.is_empty());
-
-        let idx = self.calls.iter().position(|call| {
-            call.history
-                .struct_recur_strategy_pred(call.pred, &call.args)
-        });
-
-        if let Some(idx) = idx {
-            idx
-        } else {
-            self.clear_history();
-            self.struct_recur_strategy()
-        }
+    pub fn interleave_strategy(&mut self) -> usize {
+        (0..self.calls.len())
+            .min_by_key(|idx| self.calls[*idx].depth)
+            .unwrap()
     }
 
     pub fn small_first_strategy(&mut self) -> usize {
-        let mut vec = Vec::new();
-
-        for call_idx in 0..self.calls.len() {
-            let call = &self.calls[call_idx];
-            vec.push(1000 * call.looks.len() + call.history.len());
-        }
-
-        let (idx, _) = vec.iter().enumerate().min_by_key(|(_idx, br)| *br).unwrap();
-        idx
+        (0..self.calls.len())
+            .min_by_key(|idx| {
+                let call = &self.calls[*idx];
+                call.looks.len() * 1000 + call.depth
+            })
+            .unwrap()
     }
 
     pub fn check_reduction(&self) -> Option<usize> {
@@ -149,7 +114,7 @@ pub struct PredCall {
     pub polys: Vec<TermType>,
     pub args: Vec<TermVal<IdentCtx>>,
     pub looks: Vec<usize>,
-    pub history: History,
+    pub depth: usize,
 }
 
 impl fmt::Display for PredCall {
@@ -182,69 +147,6 @@ impl PredCall {
         let mut new_looks = self.looks.clone();
         new_looks.retain(|look| self.try_unify_rule_head(&rules[*look].head).is_ok());
         self.looks = new_looks
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct HistoryNode {
-    pred: Ident,
-    args_size: Vec<usize>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct History(Vec<HistoryNode>);
-
-impl History {
-    pub fn new() -> History {
-        History(Vec::new())
-    }
-
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    pub fn clear(&mut self) {
-        self.0.clear();
-    }
-
-    pub fn push(&mut self, pred: Ident, args_size: Vec<usize>) {
-        self.0.push(HistoryNode { pred, args_size });
-    }
-
-    pub fn left_biased_strategy_pred(&self) -> bool {
-        true
-    }
-
-    pub fn naive_strategy_pred(&self, n: usize) -> bool {
-        self.0.len() < n
-    }
-
-    pub fn struct_recur_strategy_pred(&self, pred: Ident, args: &[TermVal<IdentCtx>]) -> bool {
-        let args_size: Vec<usize> = args.iter().map(|arg| arg.height()).collect();
-
-        for node in &self.0 {
-            if node.pred == pred
-                && node
-                    .args_size
-                    .iter()
-                    .zip(args_size.iter())
-                    .all(|(arg0, arg)| arg0 <= arg)
-            {
-                return false;
-            }
-        }
-
-        true
-    }
-}
-
-impl Default for History {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

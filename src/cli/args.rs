@@ -12,7 +12,6 @@ pub enum Solver {
 pub enum Heuristic {
     LeftBiased,
     Interleave,
-    StructRecur,
     SmallFirst,
     LookAhead,
     Random,

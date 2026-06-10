@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor benchmark tests.
 - Improve look-ahead branching heuristic.
 
+### Removed
+
+- Remove structural-recursive branching heuristic.
+
 ### Fixed
 
 - Fix an incorrect span bug in parser.

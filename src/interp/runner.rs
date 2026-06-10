@@ -75,7 +75,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             polys: Vec::new(),
             args: pars.iter().map(|par| Term::Var(par.tag_ctx(0))).collect(),
             looks: (0..rules.len()).collect(),
-            history: History::new(),
+            depth: 0,
         };
         call.lookahead_update(rules);
 
@@ -142,8 +142,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
     fn run_branch_step(&mut self, brch: &mut Branch) {
         let call_idx = match self.config.heuristic {
             args::Heuristic::LeftBiased => brch.left_biased_strategy(),
-            args::Heuristic::Interleave => brch.naive_strategy(1),
-            args::Heuristic::StructRecur => brch.struct_recur_strategy(),
+            args::Heuristic::Interleave => brch.interleave_strategy(),
             args::Heuristic::SmallFirst => brch.small_first_strategy(),
             args::Heuristic::LookAhead => self.lookahead_choose(brch),
             args::Heuristic::Random => brch.random_strategy(&mut self.rng),
@@ -187,7 +186,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             if tau < 1.2 {
                 return call_idx;
             }
-            let score = tau + (brch.calls[call_idx].history.len() as f32) * (0.001 as f32);
+            let score = tau + (brch.calls[call_idx].depth as f32) * (0.001 as f32);
             if score < best_score {
                 best_score = score;
                 best_idx = call_idx;
@@ -248,23 +247,16 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             return None;
         }
 
-        let mut new_history = call.history.clone();
-        new_history.push(
-            call.pred,
-            call.args.iter().map(|arg| arg.height()).collect(),
-        );
-
         for (pred, polys, args) in rule_ctx.calls.iter().rev() {
             let mut new_call = PredCall {
                 pred: *pred,
                 polys: polys.clone(),
                 args: args.clone(),
                 looks: (0..self.prog.preds[pred].rules.len()).collect(),
-                history: new_history.clone(),
+                depth: call.depth + 1,
             };
 
             new_call.lookahead_update(&self.prog.preds[pred].rules);
-
             new_brch.insert(call_idx, new_call);
         }
 
