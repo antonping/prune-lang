@@ -196,7 +196,7 @@ impl Diagnostic {
                     }
 
                     let head_width = (1 + end_line).to_string().len();
-                    for (line, (s, e)) in (start_line..=end_line).zip(vec.into_iter()) {
+                    for (line, (s, e)) in (start_line..=end_line).zip(vec) {
                         // print header "xxx | ", where xxx is the line number
                         output.push_str(&format!("{:head_width$} | {}\n", line + 1, text[line]));
                         output.push_str(&format!("{:head_width$} | ", ' '));

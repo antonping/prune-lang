@@ -52,25 +52,25 @@ impl From<CheckError> for Diagnostic {
     fn from(val: CheckError) -> Self {
         match val {
             CheckError::UnifyFailed {typ1, typ2, span } => {
-                Diagnostic::error(format!("cannot match type!")).line_span(
+                Diagnostic::error("cannot match type!".to_string()).line_span(
                     span.clone(),
                     format!("the expression here has type {typ1}, but expected {typ2}."),
                 )
             }
             CheckError::OccurCheckFailed { var, typ, span } => {
-                Diagnostic::error(format!("occurrence check failed!")).line_span(
+                Diagnostic::error("occurrence check failed!".to_string()).line_span(
                     span.clone(),
                     format!("failed to unify the variable {var} with type {typ}, since it occurs in its own type."),
                 )
             }
             CheckError::UnifyVecDiffLen { vec1, vec2, span } => {
-                Diagnostic::error(format!("type vectors have different length!")).line_span(
+                Diagnostic::error("type vectors have different length!".to_string()).line_span(
                     span.clone(),
                     format!("failed to unify two vectors with lengths: {vec1:?} and {vec2:?}"),
                 )
             }
             CheckError::TypeArityMismatch { actual, expected, span } => {
-                Diagnostic::error(format!("type arity mismatch!")).line_span(
+                Diagnostic::error("type arity mismatch!".to_string()).line_span(
                     span.clone(),
                     format!("the type constructor has arity {actual}, but expected arity {expected}."),
                 )

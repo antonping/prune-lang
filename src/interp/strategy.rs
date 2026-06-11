@@ -98,12 +98,7 @@ impl Branch {
     }
 
     pub fn check_reduction(&self) -> Option<usize> {
-        for call_idx in 0..self.calls.len() {
-            if self.calls[call_idx].looks.len() <= 1 {
-                return Some(call_idx);
-            }
-        }
-        None
+        (0..self.calls.len()).find(|idx| self.calls[*idx].looks.len() <= 1)
     }
 }
 

@@ -166,7 +166,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
         let mut best_score: f32 = f32::MAX;
         let mut best_idx: usize = 0;
 
-        let mut calls: Vec<usize> = (0..brch.calls.len()).into_iter().collect();
+        let mut calls: Vec<usize> = (0..brch.calls.len()).collect();
         calls.sort_by_key(|call| brch.calls[*call].looks.len());
 
         for call_idx in calls.into_iter() {
@@ -174,19 +174,18 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
 
             let mut vec = Vec::new();
             for rule_idx in brch.calls[call_idx].looks.iter().rev() {
-                if let Some((brch, steps)) =
+                if let Some((new_brch, steps)) =
                     self.apply_rule_with_reduction(brch, call_idx, *rule_idx)
+                    && !new_brch.calls.is_empty()
                 {
-                    if !brch.calls.is_empty() {
-                        vec.push(steps);
-                    }
+                    vec.push(steps);
                 }
             }
             let tau = tau_function(&vec);
             if tau < 1.2 {
                 return call_idx;
             }
-            let score = tau + (brch.calls[call_idx].depth as f32) * (0.001 as f32);
+            let score = tau + (brch.calls[call_idx].depth as f32) * (0.001_f32);
             if score < best_score {
                 best_score = score;
                 best_idx = call_idx;
