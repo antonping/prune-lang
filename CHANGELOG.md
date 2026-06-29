@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add reduction flag to CLI parameters.
 
+### Changed
+
+- Refactor benchmark tests.
+
 ## [0.2.3] - 2026-06-11
 
 ### Added

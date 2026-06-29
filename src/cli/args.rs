@@ -89,12 +89,17 @@ pub fn get_test_cli_args(prog_name: PathBuf) -> CliArgs {
     }
 }
 
-pub fn get_bench_cli_args(prog_name: PathBuf, heuristic: Heuristic, depth_limit: usize) -> CliArgs {
+pub fn get_bench_cli_args(
+    prog_name: PathBuf,
+    heuristic: Heuristic,
+    reduction: bool,
+    depth_limit: usize,
+) -> CliArgs {
     CliArgs {
         input: prog_name,
         solver: Solver::Z3,
         heuristic,
-        reduction: true,
+        reduction,
         depth_step: 10,
         depth_limit,
         answer_limit: usize::MAX,
