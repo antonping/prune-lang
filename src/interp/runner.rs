@@ -144,7 +144,11 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             args::Heuristic::LeftBiased => brch.left_biased_strategy(),
             args::Heuristic::Interleave => brch.interleave_strategy(),
             args::Heuristic::SmallFirst => brch.small_first_strategy(),
-            args::Heuristic::LookAhead => self.lookahead_choose(brch),
+            args::Heuristic::LookAhead => {
+                // lookahead heuristic can't work without reductions!
+                assert!(self.config.reduction);
+                self.lookahead_choose(brch)
+            }
             args::Heuristic::Random => brch.random_strategy(&mut self.rng),
         };
 
@@ -153,10 +157,20 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
         looks.shuffle(&mut self.rng);
 
         self.stats.step();
-        for rule_idx in looks.iter().rev() {
-            if let Some((brch, _steps)) = self.apply_rule_with_reduction(brch, call_idx, *rule_idx)
-            {
-                self.stack.push(brch);
+
+        if self.config.reduction {
+            for &rule_idx in looks.iter().rev() {
+                if let Some((brch, _steps)) =
+                    self.apply_rule_with_reduction(brch, call_idx, rule_idx)
+                {
+                    self.stack.push(brch);
+                }
+            }
+        } else {
+            for &rule_idx in looks.iter().rev() {
+                if let Some(brch) = self.apply_rule(brch, call_idx, rule_idx) {
+                    self.stack.push(brch);
+                }
             }
         }
     }

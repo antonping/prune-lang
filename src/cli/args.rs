@@ -28,6 +28,9 @@ pub struct CliArgs {
     #[arg(long, default_value = "small-first", value_name = "HEURISTIC")]
     pub heuristic: Heuristic,
 
+    #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
+    pub reduction: bool,
+
     #[arg(long, default_value_t = 10, value_name = "INT")]
     pub depth_step: usize,
 
@@ -52,13 +55,13 @@ pub struct CliArgs {
     #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
     pub show_output: bool,
 
-    #[arg(long, default_value_t = false, action = clap::ArgAction::Set)]
+    #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
     pub show_stat: bool,
 
-    #[arg(long, default_value_t = false, action = clap::ArgAction::Set)]
+    #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
     pub show_prog: bool,
 
-    #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+    #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
     pub warn_as_err: bool,
 }
 
@@ -71,6 +74,7 @@ pub fn get_test_cli_args(prog_name: PathBuf) -> CliArgs {
         input: prog_name,
         solver: Solver::Z3,
         heuristic: Heuristic::SmallFirst,
+        reduction: true,
         depth_step: 10,
         depth_limit: usize::MAX,
         answer_limit: usize::MAX,
@@ -90,6 +94,7 @@ pub fn get_bench_cli_args(prog_name: PathBuf, heuristic: Heuristic, depth_limit:
         input: prog_name,
         solver: Solver::Z3,
         heuristic,
+        reduction: true,
         depth_step: 10,
         depth_limit,
         answer_limit: usize::MAX,
