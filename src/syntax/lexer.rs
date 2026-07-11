@@ -131,9 +131,9 @@ pub enum Token {
     #[token("()")] // both for unit type and unit value
     Unit,
     // LowerIdent could be just wildcard "_", it is handled in parser
-    #[regex(r"([a-z]|_)([a-zA-Z0-9]|_)*")]
+    #[regex(r"(%?[a-z]|_)([a-zA-Z0-9]|_)*")]
     LowerIdent,
-    #[regex(r"[A-Z]([a-zA-Z0-9]|_)*")]
+    #[regex(r"%?[A-Z]([a-zA-Z0-9]|_)*")]
     UpperIdent,
     #[regex(r"@[a-zA-Z]([a-zA-Z0-9]|_)*")]
     PrimOpr,

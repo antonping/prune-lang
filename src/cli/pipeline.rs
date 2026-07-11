@@ -68,6 +68,9 @@ impl<'a> Pipeline<'a> {
 
         let prog = self.compile_pass(&prog);
 
+        // let builtin = prog.extend_builtin();
+        // prog.replace_builtin(&builtin);
+
         Ok(prog)
     }
 
