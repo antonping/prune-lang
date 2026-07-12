@@ -106,15 +106,122 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             }
 
             if self.ansr_cnt >= self.config.answer_limit {
-                return;
+                break;
             }
+            if brch.depth + brch.calls.len() > depth_end {
+                continue;
+            }
+
             if brch.calls.is_empty() {
-                if brch.depth >= depth_start && brch.depth <= depth_end {
-                    self.solve_answer(&brch);
+                if let Some(brchs) = self.split_free_var(&brch) {
+                    for brch in brchs {
+                        self.stack.push(brch);
+                    }
+                } else {
+                    if brch.depth >= depth_start && brch.depth <= depth_end {
+                        self.solve_answer(&brch);
+                    }
                 }
-            } else if brch.depth + brch.calls.len() <= depth_end {
+            } else {
                 self.run_branch_step(&mut brch);
             }
+        }
+    }
+
+    fn split_free_var(&mut self, brch: &Branch) -> Option<Vec<Branch>> {
+        let mut free_vars: Vec<(IdentCtx, TermType)> = Vec::new();
+        for ansr in &brch.ansrs {
+            self.collect_free_vars(&ansr.val, &ansr.ty, &mut free_vars);
+        }
+        free_vars.sort_by_key(|(id, _)| *id);
+        free_vars.dedup_by_key(|(id, _)| *id);
+        free_vars.retain(|(_, ty)| !matches!(ty, Term::Lit(_)));
+        if free_vars.is_empty() {
+            return None;
+        }
+
+        let (var, ty) = &free_vars[self.rng.random_range(0..free_vars.len())];
+        match ty {
+            Term::Lit(_) => unreachable!(),
+            Term::Var(_) => {
+                panic!("type variable at runtime!")
+            }
+            Term::Cons(OptCons::Some(ty_cons), _args) => {
+                let mut brchs = Vec::new();
+                let data = self.prog.datas.values().find(|d| d.name == *ty_cons)?;
+                for cons in &data.cons {
+                    self.ctx_cnt += 1;
+                    let cons_val: TermVal<IdentCtx> = Term::Cons(
+                        OptCons::Some(cons.name),
+                        cons.flds
+                            .iter()
+                            .map(|_| Term::Var(Ident::fresh(&"_").tag_ctx(self.ctx_cnt)))
+                            .collect(),
+                    );
+                    let mut new_brch = brch.clone();
+                    new_brch.depth += 5;
+                    let mut unifier = Unifier::new();
+                    unifier.unify(&Term::Var(*var), &cons_val).unwrap();
+                    new_brch.merge(unifier);
+                    brchs.push(new_brch);
+                }
+                Some(brchs)
+            }
+            Term::Cons(OptCons::None, args) => {
+                self.ctx_cnt += 1;
+                let mut new_brch = brch.clone();
+                new_brch.depth += 5;
+                let args = args
+                    .iter()
+                    .map(|_| Term::Var(Ident::fresh(&"_").tag_ctx(self.ctx_cnt)))
+                    .collect();
+                let mut unifier: Unifier<IdentCtx, _, _> = Unifier::new();
+                unifier
+                    .unify(&Term::Var(*var), &Term::Cons(OptCons::None, args))
+                    .unwrap();
+                new_brch.merge(unifier);
+                Some(vec![new_brch])
+            }
+        }
+    }
+
+    fn collect_free_vars(
+        &self,
+        val: &TermVal<IdentCtx>,
+        ty: &TermType,
+        out: &mut Vec<(IdentCtx, TermType)>,
+    ) {
+        match (val, ty) {
+            (Term::Var(var), ty) => {
+                out.push((*var, ty.clone()));
+            }
+            (Term::Lit(_), _ty) => {
+                // do nothing
+            }
+            (
+                Term::Cons(OptCons::Some(val_cons), val_args),
+                Term::Cons(OptCons::Some(ty_cons), ty_args),
+            ) => {
+                let data = &self.prog.datas[ty_cons];
+                let cons = data.cons.iter().find(|con| con.name == *val_cons).unwrap();
+                let subst: HashMap<Ident, TermType> = data
+                    .polys
+                    .iter()
+                    .zip(ty_args.iter())
+                    .map(|(poly, arg)| (*poly, arg.clone()))
+                    .collect();
+                let ty_args: Vec<TermType> =
+                    cons.flds.iter().map(|fld| fld.substitute(&subst)).collect();
+                for (val, ty) in val_args.iter().zip(ty_args.iter()) {
+                    self.collect_free_vars(val, ty, out);
+                }
+            }
+            (Term::Cons(OptCons::None, val_args), Term::Cons(OptCons::None, ty_args)) => {
+                for (val, ty) in val_args.iter().zip(ty_args.iter()) {
+                    self.collect_free_vars(val, ty, out);
+                }
+            }
+            _ => unreachable!(),
         }
     }
 

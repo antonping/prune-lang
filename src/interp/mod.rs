@@ -6,6 +6,7 @@ use crate::utils::unify::Unifier;
 
 use crate::logic::ast::*;
 use rand::*;
+use std::collections::HashMap;
 
 pub mod config;
 pub mod progagate;

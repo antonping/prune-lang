@@ -30,8 +30,8 @@ impl fmt::Display for Branch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "##### depth: = {} #####", self.depth)?;
 
-        for Answer { par, ty, val } in &self.ansrs {
-            writeln!(f, "{par}: {ty} = {val}")?;
+        for ansr in &self.ansrs {
+            writeln!(f, "{ansr}")?;
         }
 
         for (prim, args) in &self.prims {
@@ -44,6 +44,24 @@ impl fmt::Display for Branch {
         }
 
         Ok(())
+    }
+}
+
+impl fmt::Display for Answer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {} = {}", self.par, self.ty, self.val)
+    }
+}
+
+impl fmt::Display for PredCall {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let args = self.args.iter().format(", ");
+        if self.polys.is_empty() {
+            write!(f, "{}({})", self.pred, args)
+        } else {
+            let polys = self.polys.iter().format(", ");
+            write!(f, "{}[{}]({})", self.pred, polys, args)
+        }
     }
 }
 
@@ -119,18 +137,6 @@ impl Branch {
 
     pub fn check_reduction(&self) -> Option<usize> {
         (0..self.calls.len()).find(|idx| self.calls[*idx].looks.len() <= 1)
-    }
-}
-
-impl fmt::Display for PredCall {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let args = self.args.iter().format(", ");
-        if self.polys.is_empty() {
-            write!(f, "{}({})", self.pred, args)
-        } else {
-            let polys = self.polys.iter().format(", ");
-            write!(f, "{}[{}]({})", self.pred, polys, args)
-        }
     }
 }
 
