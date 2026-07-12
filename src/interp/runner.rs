@@ -63,17 +63,15 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
         assert!(self.prog.preds[&pred].polys.is_empty());
 
         self.ctx_cnt = 0;
-        let pars: Vec<Ident> = self.prog.preds[&pred]
-            .pars
-            .iter()
-            .map(|(par, _typ)| *par)
-            .collect();
-
         let rules = &self.prog.preds[&pred].rules;
         let mut call = PredCall {
             pred,
             polys: Vec::new(),
-            args: pars.iter().map(|par| Term::Var(par.tag_ctx(0))).collect(),
+            args: self.prog.preds[&pred]
+                .pars
+                .iter()
+                .map(|(par, _ty)| Term::Var(par.tag_ctx(0)))
+                .collect(),
             looks: (0..rules.len()).collect(),
             depth: 0,
         };
@@ -81,9 +79,14 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
 
         let brch = Branch {
             depth: 0,
-            answers: pars
+            ansrs: self.prog.preds[&pred]
+                .pars
                 .iter()
-                .map(|par| (*par, Term::Var(par.tag_ctx(0))))
+                .map(|(par, ty)| Answer {
+                    par: *par,
+                    ty: ty.clone(),
+                    val: Term::Var(par.tag_ctx(0)),
+                })
                 .collect(),
             prims: Vec::new(),
             calls: vec![call],
@@ -132,8 +135,15 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
                 .map(|(var, lit)| (var, Term::Lit(lit)))
                 .collect();
 
-            for (par, val) in &brch.answers {
-                writeln!(self.output.answer, "{} = {}", par, val.substitute(&map)).unwrap();
+            for Answer { par, ty, val } in &brch.ansrs {
+                writeln!(
+                    self.output.answer,
+                    "{}: {} = {}",
+                    par,
+                    ty,
+                    val.substitute(&map)
+                )
+                .unwrap();
             }
             self.ansr_cnt += 1;
         }
@@ -287,8 +297,8 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             }
         }
 
-        for (_par, val) in &mut new_brch.answers {
-            *val = unifier.subst(val);
+        for ans in &mut new_brch.ansrs {
+            ans.val = unifier.subst(&ans.val);
         }
 
         Some(new_brch)

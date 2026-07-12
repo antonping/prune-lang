@@ -5,17 +5,33 @@ use std::fmt;
 #[derive(Clone, Debug)]
 pub struct Branch {
     pub depth: usize,
-    pub answers: Vec<(Ident, TermVal<IdentCtx>)>,
+    pub ansrs: Vec<Answer>,
     pub prims: Vec<(Prim, Vec<AtomVal<IdentCtx>>)>,
     pub calls: Vec<PredCall>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Answer {
+    pub par: Ident,
+    pub ty: TermType,
+    pub val: TermVal<IdentCtx>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PredCall {
+    pub pred: Ident,
+    pub polys: Vec<TermType>,
+    pub args: Vec<TermVal<IdentCtx>>,
+    pub looks: Vec<usize>,
+    pub depth: usize,
 }
 
 impl fmt::Display for Branch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "##### depth: = {} #####", self.depth)?;
 
-        for (par, val) in &self.answers {
-            writeln!(f, "{par} = {val}")?;
+        for Answer { par, ty, val } in &self.ansrs {
+            writeln!(f, "{par}: {ty} = {val}")?;
         }
 
         for (prim, args) in &self.prims {
@@ -43,9 +59,13 @@ impl Branch {
 
         Branch {
             depth: 0,
-            answers: pars
+            ansrs: pars
                 .iter()
-                .map(|par| (*par, Term::Var(par.tag_ctx(0))))
+                .map(|par| Answer {
+                    par: *par,
+                    ty: Term::Lit(LitType::TyBool),
+                    val: Term::Var(par.tag_ctx(0)),
+                })
                 .collect(),
             prims: Vec::new(),
             calls: vec![call],
@@ -59,8 +79,8 @@ impl Branch {
             }
         }
 
-        for (_par, val) in &mut self.answers {
-            *val = unifier.subst(val);
+        for ans in &mut self.ansrs {
+            ans.val = unifier.subst(&ans.val);
         }
     }
 
@@ -100,16 +120,6 @@ impl Branch {
     pub fn check_reduction(&self) -> Option<usize> {
         (0..self.calls.len()).find(|idx| self.calls[*idx].looks.len() <= 1)
     }
-}
-
-#[derive(Clone, Debug)]
-#[allow(dead_code)]
-pub struct PredCall {
-    pub pred: Ident,
-    pub polys: Vec<TermType>,
-    pub args: Vec<TermVal<IdentCtx>>,
-    pub looks: Vec<usize>,
-    pub depth: usize,
 }
 
 impl fmt::Display for PredCall {

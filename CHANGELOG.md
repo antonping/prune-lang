@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add reduction flag to CLI parameters.
 - Add builtin implementation for primitives.
+- Add type information to answer variables.
 
 ### Changed
 
