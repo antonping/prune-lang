@@ -30,7 +30,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             args::Solver::CVC5 => Box::new(super::solver::smtlib::SmtLibSolver::new(
                 super::solver::smtlib::SolverBackend::CVC5,
             )),
-            args::Solver::NoSmt => Box::new(super::solver::no_smt::NoSmtSolver::new()),
+            args::Solver::Encode => Box::new(super::solver::no_smt::NoSmtSolver::new()),
         };
 
         let rng = rand::rng();

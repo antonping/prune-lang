@@ -5,7 +5,7 @@ use clap::{Parser, ValueEnum};
 pub enum Solver {
     Z3,
     CVC5,
-    NoSmt,
+    Encode,
 }
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]

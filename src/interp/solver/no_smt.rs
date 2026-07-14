@@ -22,7 +22,7 @@ impl common::PrimSolver for NoSmtSolver {
         if prims.is_empty() {
             Some(HashMap::new())
         } else {
-            None
+            panic!("no solver for unsolved primitives!")
         }
     }
 }

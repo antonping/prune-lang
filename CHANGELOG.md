@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add type information to answer variables.
 - Implement branch splitting by free variables.
 - Improve readability after solving builtin primitives.
+- Add encoded primitives as an alternative solver backend.
 
 ### Changed
 

@@ -1,4 +1,4 @@
-use super::args::CliArgs;
+use super::args::{self, CliArgs};
 use super::diagnostic::{DiagLevel, Diagnostic};
 use super::*;
 use crate::cli::replay::ReplayWriter;
@@ -66,11 +66,12 @@ impl<'a> Pipeline<'a> {
 
         self.check_pass(&mut prog)?;
 
-        let prog = self.compile_pass(&prog);
+        let mut prog = self.compile_pass(&prog);
 
-        // let builtin = prog.extend_builtin();
-        // prog.replace_builtin(&builtin);
-
+        if self.args.solver == args::Solver::Encode {
+            let builtin = prog.extend_builtin();
+            prog.replace_builtin(&builtin);
+        }
         Ok(prog)
     }
 
