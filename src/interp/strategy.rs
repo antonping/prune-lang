@@ -161,6 +161,63 @@ impl PredCall {
     }
 }
 
+pub fn reinterp_type(typ: &TermType) -> TermType {
+    match typ {
+        Term::Cons(cons, args) => match cons {
+            OptCons::Some(c) => match c.name.as_str() {
+                "%Int" => Term::Lit(LitType::TyInt),
+                "%Bool" => Term::Lit(LitType::TyBool),
+                _ => Term::Cons(*cons, args.iter().map(reinterp_type).collect()),
+            },
+            OptCons::None => Term::Cons(*cons, args.iter().map(reinterp_type).collect()),
+        },
+        other => other.clone(),
+    }
+}
+
+pub fn reinterp_term(term: &TermVal<IdentCtx>) -> TermVal<IdentCtx> {
+    match term {
+        Term::Cons(cons, args) => match cons {
+            OptCons::Some(c) => match c.name.as_str() {
+                "%Pos" => Term::Lit(LitVal::Int(bit_list_to_uint(&args[0]) as i64)),
+                "%Zero" => Term::Lit(LitVal::Int(0)),
+                "%Neg" => Term::Lit(LitVal::Int(-(bit_list_to_uint(&args[0]) as i64))),
+                _ => Term::Cons(*cons, args.iter().map(reinterp_term).collect()),
+            },
+            OptCons::None => Term::Cons(*cons, args.iter().map(reinterp_term).collect()),
+        },
+        other => other.clone(),
+    }
+}
+
+pub fn bit_list_to_uint(term: &TermVal<IdentCtx>) -> u64 {
+    let Term::Cons(OptCons::Some(cons), args) = term else {
+        panic!("invalid bit list!");
+    };
+    match cons.name.as_str() {
+        "%Nil" => {
+            assert!(args.is_empty());
+            1
+        }
+        "%Cons" => {
+            let [head, tail] = args.as_slice() else {
+                panic!("not a bit list!");
+            };
+            let Term::Cons(OptCons::Some(bit), args) = head else {
+                panic!("not a bit!");
+            };
+            assert!(args.is_empty());
+            let bit_val = match bit.name.as_str() {
+                "%O" => 0,
+                "%I" => 1,
+                _ => panic!("not a bit!"),
+            };
+            bit_list_to_uint(tail) * 2 + bit_val
+        }
+        _ => panic!("invalid bit list!"),
+    }
+}
+
 // input: a vector of positive integer [a, b, ..., z]
 // output: solution of equation x^-a + x^-b + ... + x^-z = 1
 pub fn tau_function(vec: &Vec<usize>) -> f32 {

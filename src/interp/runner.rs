@@ -247,8 +247,8 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
                     self.output.answer,
                     "{}: {} = {}",
                     par,
-                    ty,
-                    val.substitute(&map)
+                    reinterp_type(ty),
+                    reinterp_term(&val.substitute(&map))
                 )
                 .unwrap();
             }
