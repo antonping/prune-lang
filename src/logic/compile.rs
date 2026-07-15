@@ -82,36 +82,3 @@ pub fn compile_pass(prog: &ast::Program) -> Program {
         querys,
     }
 }
-
-#[test]
-#[ignore = "just to see result"]
-fn compile_pass_test() {
-    let src: &'static str = r#"
-datatype List[a] where
-| Cons(a, List[a])
-| Nil
-end
-
-function id[a](x: a) -> a
-begin
-    x
-end
-
-function append(xs: List[Int], x: Int) -> List[Int]
-begin
-    match xs with
-    | Cons(head, tail) =>
-        Cons(head, append(tail, id(x)))
-    | Nil => Cons(x, Nil)
-    end
-end
-"#;
-    let (prog, errs) = crate::syntax::parser::parse_program(src);
-    assert!(errs.is_empty());
-
-    let prog = super::compile::compile_pass(&prog);
-
-    println!("{:#?}", prog);
-
-    println!("{}", prog);
-}

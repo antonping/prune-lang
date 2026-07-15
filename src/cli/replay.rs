@@ -33,16 +33,3 @@ impl<W1: Write, W2: Write> Write for ReplayWriter<W1, W2> {
         Ok(())
     }
 }
-
-#[test]
-#[ignore = "just to see result"]
-fn test_replay_writer() -> io::Result<()> {
-    let file = std::fs::File::create("output.txt")?;
-
-    let mut writer: Box<dyn Write> = Box::new(ReplayWriter::replay_stdout(file));
-
-    writeln!(&mut writer, "hello,")?;
-    writeln!(&mut writer, "world!")?;
-
-    Ok(())
-}

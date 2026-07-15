@@ -216,34 +216,3 @@ pub fn tokenize(source: &str) -> Vec<TokenSpan> {
     vec.push(TokenSpan { token, span });
     vec
 }
-
-#[test]
-#[ignore = "just to see result"]
-fn lexer_test() {
-    let s = r#"
-// test line comment
-/*
-    /*
-        test block comment
-    */
-*/
-datatype IntList where
-| Cons(Int, IntList)
-| Nil
-end
-
-function append(xs: IntList, x: Int) -> Int
-begin
-    match xs with
-    | Cons(head, tail) => Cons(head, append(tail, x))
-    | Nil => Cons(x, Nil)
-    end
-end
-"#;
-
-    let mut lex = Token::lexer(s);
-
-    while let Some(tok) = lex.next() {
-        println!("{:?} {:?} {}", tok, lex.span(), lex.slice());
-    }
-}
