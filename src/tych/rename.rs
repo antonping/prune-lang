@@ -131,7 +131,11 @@ impl Renamer {
                 var_ty: ty,
             });
         }
-        let new_id = var.ident.uniquify();
+        let new_id = if var.ident.name.as_str().starts_with("%") {
+            Ident::dummy(&var.ident.name)
+        } else {
+            var.ident.uniquify()
+        };
         let info = VarInfo {
             new_id,
             span: var.span.clone(),

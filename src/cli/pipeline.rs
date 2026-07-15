@@ -69,8 +69,8 @@ impl<'a> Pipeline<'a> {
         let mut prog = self.compile_pass(&prog);
 
         if self.args.solver == args::Solver::Encode {
-            let builtin = prog.extend_builtin();
-            prog.replace_builtin(&builtin);
+            prog.extend_builtin();
+            prog.replace_builtin();
         }
         Ok(prog)
     }

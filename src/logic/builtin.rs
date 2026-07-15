@@ -290,117 +290,77 @@ end
 
 "#;
 
-pub struct BuiltinMap {
-    map: HashMap<&'static str, Ident>,
-}
-
-impl BuiltinMap {
-    fn new() -> BuiltinMap {
-        BuiltinMap {
-            map: HashMap::new(),
+pub fn replace_lit_type(typ: &mut TermType) {
+    match typ {
+        Term::Var(_var) => {
+            // do nothing
         }
-    }
-
-    fn replace_lit_type(&self, typ: &mut TermType) {
-        match typ {
-            TermType::Lit(LitType::TyInt) => {
-                *typ = TermType::Cons(OptCons::Some(self.map["%Int"]), vec![]);
-            }
-            TermType::Lit(LitType::TyBool) => {
-                *typ = TermType::Cons(OptCons::Some(self.map["%Bool"]), vec![]);
-            }
-            TermType::Cons(_, flds) => {
-                for fld in flds {
-                    self.replace_lit_type(fld);
-                }
-            }
-            _ => {}
+        Term::Lit(lit) => {
+            *typ = Term::Cons(OptCons::Some(Ident::dummy(&format!("%{}", lit))), vec![]);
         }
-    }
-
-    fn uint_to_bitlist(&self, n: u64) -> TermVal {
-        if n == 1 {
-            return Term::Cons(OptCons::Some(self.map["%Nil"]), vec![]);
-        }
-        let bit = if n & 1 == 0 {
-            self.map["%O"]
-        } else {
-            self.map["%I"]
-        };
-        let tail = self.uint_to_bitlist(n >> 1);
-        Term::Cons(
-            OptCons::Some(self.map["%Cons"]),
-            vec![Term::Cons(OptCons::Some(bit), vec![]), tail],
-        )
-    }
-
-    fn int_to_bitint(&self, n: i64) -> TermVal {
-        if n == 0 {
-            return Term::Cons(OptCons::Some(self.map["%Zero"]), vec![]);
-        }
-        let (sign_ident, abs_n) = if n > 0 {
-            (self.map["%Pos"], n as u64)
-        } else {
-            (self.map["%Neg"], n.unsigned_abs())
-        };
-        let bitlist = self.uint_to_bitlist(abs_n);
-        Term::Cons(OptCons::Some(sign_ident), vec![bitlist])
-    }
-
-    fn replace_lit_val(&self, term: &mut TermVal) {
-        match term {
-            Term::Lit(LitVal::Int(n)) => {
-                *term = self.int_to_bitint(*n);
+        Term::Cons(_, flds) => {
+            for fld in flds {
+                replace_lit_type(fld);
             }
-            Term::Lit(LitVal::Bool(true)) => {
-                *term = Term::Cons(OptCons::Some(self.map["%T"]), vec![]);
-            }
-            Term::Lit(LitVal::Bool(false)) => {
-                *term = Term::Cons(OptCons::Some(self.map["%F"]), vec![]);
-            }
-            Term::Cons(_, flds) => {
-                for fld in flds {
-                    self.replace_lit_val(fld);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    fn atom_to_termval(&self, atom: &AtomVal) -> TermVal {
-        match atom {
-            Term::Var(v) => Term::Var(*v),
-            Term::Lit(LitVal::Int(n)) => self.int_to_bitint(*n),
-            Term::Lit(LitVal::Bool(true)) => Term::Cons(OptCons::Some(self.map["%T"]), vec![]),
-            Term::Lit(LitVal::Bool(false)) => Term::Cons(OptCons::Some(self.map["%F"]), vec![]),
-            Term::Lit(l) => Term::Lit(*l),
-            _ => unreachable!(),
         }
     }
 }
 
-fn prim_name(prim: &Prim) -> &'static str {
-    match prim {
-        Prim::IAdd => "%iadd",
-        Prim::ISub => "%isub",
-        Prim::IMul => "%imul",
-        Prim::IDiv => todo!("IDiv is not supported yet!"),
-        Prim::IRem => todo!("IRem is not supported yet!"),
-        Prim::INeg => "%ineg",
-        Prim::ICmp(Compare::Lt) => "%icmplt",
-        Prim::ICmp(Compare::Le) => "%icmple",
-        Prim::ICmp(Compare::Eq) => "%icmpeq",
-        Prim::ICmp(Compare::Ge) => "%icmpge",
-        Prim::ICmp(Compare::Gt) => "%icmpgt",
-        Prim::ICmp(Compare::Ne) => "%icmpne",
-        Prim::BAnd => "%band",
-        Prim::BOr => "%bor",
-        Prim::BNot => "%bnot",
+pub fn replace_lit_val(term: &mut TermVal) {
+    match term {
+        Term::Lit(LitVal::Int(n)) => {
+            *term = int_to_bit_int(*n);
+        }
+        Term::Lit(LitVal::Bool(true)) => {
+            *term = Term::Cons(OptCons::Some(Ident::dummy(&"%T")), vec![]);
+        }
+        Term::Lit(LitVal::Bool(false)) => {
+            *term = Term::Cons(OptCons::Some(Ident::dummy(&"%F")), vec![]);
+        }
+        Term::Lit(_) => {
+            panic!("literal not supported!");
+        }
+        Term::Cons(_, flds) => {
+            for fld in flds {
+                replace_lit_val(fld);
+            }
+        }
+        _ => {}
     }
+}
+
+pub fn int_to_bit_int(n: i64) -> TermVal {
+    if n == 0 {
+        return Term::Cons(OptCons::Some(Ident::dummy(&"%Zero")), vec![]);
+    }
+    let (sign, abs) = if n > 0 {
+        (Ident::dummy(&"%Pos"), n as u64)
+    } else {
+        (Ident::dummy(&"%Neg"), n.unsigned_abs())
+    };
+    let bit_list = uint_to_bit_list(abs);
+    Term::Cons(OptCons::Some(sign), vec![bit_list])
+}
+
+pub fn uint_to_bit_list(n: u64) -> TermVal {
+    assert!(n > 0);
+    if n == 1 {
+        return Term::Cons(OptCons::Some(Ident::dummy(&"%Nil")), vec![]);
+    }
+    let head = if n & 1 == 0 {
+        Ident::dummy(&"%O")
+    } else {
+        Ident::dummy(&"%I")
+    };
+    let tail = uint_to_bit_list(n >> 1);
+    Term::Cons(
+        OptCons::Some(Ident::dummy(&"%Cons")),
+        vec![Term::Cons(OptCons::Some(head), vec![]), tail],
+    )
 }
 
 impl Program {
-    pub fn extend_builtin(&mut self) -> BuiltinMap {
+    pub fn extend_builtin(&mut self) {
         let (mut prog, errs) = syntax::parser::parse_program(SRC);
         assert!(errs.is_empty());
 
@@ -412,56 +372,51 @@ impl Program {
 
         let prog = super::compile::compile_pass(&prog);
 
-        let mut map = BuiltinMap::new();
-        for (_name, data) in &prog.datas {
-            map.map.insert(data.name.name.as_str(), data.name);
-            for cons in &data.cons {
-                map.map.insert(cons.name.name.as_str(), cons.name);
-            }
-        }
-        for (_name, pred) in &prog.preds {
-            map.map.insert(pred.name.name.as_str(), pred.name);
-        }
         self.datas.extend(prog.datas);
         self.preds.extend(prog.preds);
-        map
     }
 
-    pub fn replace_builtin(&mut self, map: &BuiltinMap) {
+    pub fn replace_builtin(&mut self) {
         for (_name, data) in &mut self.datas {
             for cons in &mut data.cons {
                 for fld in &mut cons.flds {
-                    map.replace_lit_type(fld);
+                    replace_lit_type(fld);
                 }
             }
         }
 
         for (_name, pred) in &mut self.preds {
             for (_name, typ) in &mut pred.pars {
-                map.replace_lit_type(typ);
+                replace_lit_type(typ);
             }
             for rule in &mut pred.rules {
                 for (_name, typ) in &mut rule.vars {
-                    map.replace_lit_type(typ);
+                    replace_lit_type(typ);
                 }
                 for head in &mut rule.head {
-                    map.replace_lit_val(head);
+                    replace_lit_val(head);
                 }
                 let mut new_calls: Vec<(Ident, Vec<TermType>, Vec<TermVal>)> = Vec::new();
                 for (prim, args) in rule.prims.drain(..) {
                     new_calls.push((
-                        map.map[prim_name(&prim)],
+                        Ident::dummy(&format!("%{}", prim)),
                         vec![],
-                        args.iter().map(|a| map.atom_to_termval(&a)).collect(),
+                        args.iter()
+                            .map(|arg| {
+                                let mut arg = arg.to_term();
+                                replace_lit_val(&mut arg);
+                                arg
+                            })
+                            .collect(),
                     ));
                 }
                 rule.calls.extend(new_calls);
                 for (_call_pred, call_polys, call_args) in &mut rule.calls {
                     for poly in call_polys {
-                        map.replace_lit_type(poly);
+                        replace_lit_type(poly);
                     }
                     for arg in call_args {
-                        map.replace_lit_val(arg);
+                        replace_lit_val(arg);
                     }
                 }
             }
