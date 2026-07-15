@@ -1,0 +1,46 @@
+datatype Nat where
+| Z
+| S(Nat)
+end
+
+function cancel(x: Nat, y: Nat) -> (Nat, Nat)
+begin
+    match (x, y) with
+    | (S(k), S(l)) => cancel(k, l)
+    | (S(k), Z) => (S(k), Z)
+    | (Z, S(l)) => (Z, S(l))
+    | (Z, Z) => (Z, Z)
+    end
+end
+
+datatype Tree where
+| Empty
+| Node(Tree, Tree)
+end
+
+function is_balanced(tree: Tree)
+begin
+    let _ = is_balanced_help(tree);
+end
+
+function is_balanced_help(tree: Tree) -> Nat
+begin
+    match tree with
+    | Empty => Z
+    | Node(left, right) =>
+        let l_h = is_balanced_help(left);
+        let r_h = is_balanced_help(right);
+        match cancel(l_h, r_h) with
+        | (Z, Z) => S(l_h)
+        | (S(Z), Z) => S(l_h)
+        | (Z, S(Z)) => S(r_h)
+        end
+    end
+end
+
+function example(tree: Tree)
+begin
+    guard is_balanced(tree);
+end
+
+query example(depth_step=5, depth_limit=100, answer_limit=100)

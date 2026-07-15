@@ -1,0 +1,32 @@
+datatype Tree where
+| Empty
+| Node(Tree, Tree)
+end
+
+function is_balanced(tree: Tree)
+begin
+    let _ = is_balanced_help(tree);
+end
+
+function is_balanced_help(tree: Tree) -> Int
+begin
+    match tree with
+    | Empty => 0
+    | Node(left, right) =>
+        let l_h = is_balanced_help(left);
+        let r_h = is_balanced_help(right);
+        if l_h < r_h then
+            guard (r_h - l_h <= 1) = true;
+            r_h + 1
+        else
+            guard (l_h - r_h <= 1) = true;
+            l_h + 1
+    end
+end
+
+function example(tree: Tree)
+begin
+    guard is_balanced(tree);
+end
+
+query example(depth_step=5, depth_limit=30, answer_limit=20)

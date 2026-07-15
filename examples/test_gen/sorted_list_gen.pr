@@ -1,0 +1,22 @@
+datatype List[a] where
+| Nil
+| Cons(a, List[a])
+end
+
+function is_sorted(lst: List[Int])
+begin
+    match lst with
+    | Nil => ()
+    | Cons(_, Nil) => ()
+    | Cons(x, Cons(y, zs)) =>
+        guard x < y = true;
+        guard is_sorted(Cons(y, zs));
+    end
+end
+
+function example(lst: List[Int])
+begin
+    guard is_sorted(lst);
+end
+
+query example(depth_step=5, depth_limit=100, answer_limit=100)

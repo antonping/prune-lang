@@ -1,8 +1,3 @@
-datatype Tree[a] where
-| Empty
-| Node(Tree[a], a, Tree[a])
-end
-
 datatype Nat where
 | Z
 | S(Nat)
@@ -18,11 +13,9 @@ begin
     end
 end
 
-function less_than(x: Nat, y: Nat)
-begin
-    match cancel(x, y) with
-    | (Z, S(_)) => ()
-    end
+datatype Tree[a] where
+| Empty
+| Node(Tree[a], a, Tree[a])
 end
 
 function is_balanced[a](tree: Tree[a])
@@ -38,14 +31,14 @@ begin
         let l_h = is_balanced_help(left);
         let r_h = is_balanced_help(right);
         match cancel(l_h, r_h) with
-        | (Z, Z) => S(Z)
+        | (Z, Z) => S(l_h)
         | (S(Z), Z) => S(l_h)
         | (Z, S(Z)) => S(r_h)
         end
     end
 end
 
-function is_sorted(tree: Tree[Nat])
+function is_sorted(tree: Tree[Int])
 begin
     match tree with
     | Empty => ()
@@ -55,44 +48,44 @@ begin
     end
 end
 
-function is_sorted_min(tree: Tree[Nat], min: Nat)
+function is_sorted_min(tree: Tree[Int], min: Int)
 begin
     match tree with
     | Empty => ()
     | Node(left, x, right) =>
-        guard less_than(min, x);
+        guard x > min = true;
         guard is_sorted_min_max(left, min, x);
         guard is_sorted_min(right, x);
     end
 end
 
-function is_sorted_max(tree: Tree[Nat], max: Nat)
+function is_sorted_max(tree: Tree[Int], max: Int)
 begin
     match tree with
     | Empty => ()
     | Node(left, x, right) =>
-        guard less_than(x, max);
+        guard x < max = true;
         guard is_sorted_max(left, x);
         guard is_sorted_min_max(right, x, max);
     end
 end
 
-function is_sorted_min_max(tree: Tree[Nat], min: Nat, max: Nat)
+function is_sorted_min_max(tree: Tree[Int], min: Int, max: Int)
 begin
     match tree with
     | Empty => ()
     | Node(left, x, right) =>
-        guard less_than(min, x);
-        guard less_than(x, max);
+        guard x > min = true;
+        guard x < max = true;
         guard is_sorted_min_max(left, min, x);
         guard is_sorted_min_max(right, x, max);
     end
 end
 
-function example(tree: Tree[Nat])
+function example(tree: Tree[Int])
 begin
     guard is_sorted(tree);
     guard is_balanced(tree);
 end
 
-query example(depth_step=5, depth_limit=50, answer_limit=100)
+query example(depth_step=5, depth_limit=30, answer_limit=20)

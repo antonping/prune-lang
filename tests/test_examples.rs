@@ -59,12 +59,24 @@ fn test_avl_tree_bad() {
     run_example_sat("sym_exec/avl_tree_bad.pr");
 }
 #[test]
+fn test_avl_tree_arith_gen() {
+    run_example("test_gen/avl_tree_arith_gen.pr");
+}
+#[test]
 fn test_avl_tree_gen() {
     run_example("test_gen/avl_tree_gen.pr");
 }
 #[test]
-fn test_avl_tree_arith_gen() {
-    run_example("test_gen/avl_tree_arith_gen.pr");
+fn test_balanced_tree_arith_gen() {
+    run_example("test_gen/balanced_tree_arith_gen.pr");
+}
+#[test]
+fn test_balanced_tree_gen() {
+    run_example("test_gen/balanced_tree_gen.pr");
+}
+#[test]
+fn test_sorted_list_gen() {
+    run_example("test_gen/sorted_list_gen.pr");
 }
 #[test]
 fn test_lambda_free_gen() {
