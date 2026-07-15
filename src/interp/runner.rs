@@ -261,6 +261,7 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             args::Heuristic::LeftBiased => brch.left_biased_strategy(),
             args::Heuristic::Interleave => brch.interleave_strategy(),
             args::Heuristic::SmallFirst => brch.small_first_strategy(),
+            args::Heuristic::Hybrid => brch.hybrid_strategy(),
             args::Heuristic::LookAhead => {
                 // lookahead heuristic can't work without reductions!
                 assert!(self.config.reduction);

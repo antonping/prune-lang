@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve readability after solving builtin primitives.
 - Add encoded primitives as an alternative solver backend.
 - Add new benchmarks for test generation.
+- Introduce hybrid branching heuristic.
 
 ### Changed
 

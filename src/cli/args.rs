@@ -13,6 +13,7 @@ pub enum Heuristic {
     LeftBiased,
     Interleave,
     SmallFirst,
+    Hybrid,
     LookAhead,
     Random,
 }
@@ -22,10 +23,10 @@ pub enum Heuristic {
 pub struct CliArgs {
     pub input: PathBuf,
 
-    #[arg(long, default_value = "no-smt", value_name = "SOLVER")]
+    #[arg(long, default_value = "encode", value_name = "SOLVER")]
     pub solver: Solver,
 
-    #[arg(long, default_value = "small-first", value_name = "HEURISTIC")]
+    #[arg(long, default_value = "hybrid", value_name = "HEURISTIC")]
     pub heuristic: Heuristic,
 
     #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
@@ -72,8 +73,8 @@ pub fn parse_cli_args() -> CliArgs {
 pub fn get_test_cli_args(prog_name: PathBuf) -> CliArgs {
     CliArgs {
         input: prog_name,
-        solver: Solver::Z3,
-        heuristic: Heuristic::SmallFirst,
+        solver: Solver::Encode,
+        heuristic: Heuristic::Hybrid,
         reduction: true,
         depth_step: 10,
         depth_limit: usize::MAX,

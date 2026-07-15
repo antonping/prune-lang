@@ -135,6 +135,15 @@ impl Branch {
             .unwrap()
     }
 
+    pub fn hybrid_strategy(&mut self) -> usize {
+        (0..self.calls.len())
+            .min_by_key(|idx| {
+                let call = &self.calls[*idx];
+                call.looks.len() * 2 + call.depth
+            })
+            .unwrap()
+    }
+
     pub fn check_reduction(&self) -> Option<usize> {
         (0..self.calls.len()).find(|idx| self.calls[*idx].looks.len() <= 1)
     }
