@@ -2,7 +2,7 @@ use super::*;
 
 use crate::syntax;
 
-const SRC: &'static str = r#"
+const SRC: &str = r#"
 datatype %Bool where
 | %F
 | %T
@@ -367,25 +367,27 @@ impl Program {
         let errs = crate::tych::rename::rename_pass(&mut prog);
         assert!(errs.is_empty());
 
-        let errs = crate::tych::check::check_pass(&mut prog);
+        let errs = crate::tych::check::check_pass(&prog);
         assert!(errs.is_empty());
 
         let prog = super::compile::compile_pass(&prog);
 
         self.datas.extend(prog.datas);
+        self.conss.extend(prog.conss);
         self.preds.extend(prog.preds);
     }
 
     pub fn replace_builtin(&mut self) {
-        for (_name, data) in &mut self.datas {
-            for cons in &mut data.cons {
-                for fld in &mut cons.flds {
-                    replace_lit_type(fld);
-                }
+        for cons in self.conss.values_mut() {
+            for par in &mut cons.pars {
+                replace_lit_type(par);
+            }
+            for arg in &mut cons.data_args {
+                replace_lit_type(arg);
             }
         }
 
-        for (_name, pred) in &mut self.preds {
+        for pred in self.preds.values_mut() {
             for (_name, typ) in &mut pred.pars {
                 replace_lit_type(typ);
             }

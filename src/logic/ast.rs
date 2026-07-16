@@ -6,6 +6,7 @@ use std::fmt;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Program {
     pub datas: HashMap<Ident, DataDecl>,
+    pub conss: HashMap<Ident, ConsDecl>,
     pub preds: HashMap<Ident, PredDecl>,
     pub querys: Vec<QueryDecl>,
 }
@@ -59,13 +60,16 @@ impl Rule<Ident> {
 pub struct DataDecl {
     pub name: Ident,
     pub polys: Vec<Ident>,
-    pub cons: Vec<Constructor>,
+    pub conss: Vec<Ident>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Constructor {
+pub struct ConsDecl {
     pub name: Ident,
-    pub flds: Vec<TermType>,
+    pub polys: Vec<Ident>,
+    pub pars: Vec<TermType>,
+    pub data_cons: Ident,
+    pub data_args: Vec<TermType>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -162,7 +166,7 @@ impl fmt::Display for DataDecl {
             writeln!(f, "datatype {} where", self.name)?;
         }
 
-        for cons in &self.cons {
+        for cons in &self.conss {
             write!(f, "{cons}")?;
         }
 
@@ -171,9 +175,9 @@ impl fmt::Display for DataDecl {
     }
 }
 
-impl fmt::Display for Constructor {
+impl fmt::Display for ConsDecl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "| {}({})", self.name, self.flds.iter().format(", "))
+        writeln!(f, "| {}({})", self.name, self.pars.iter().format(", "))
     }
 }
 

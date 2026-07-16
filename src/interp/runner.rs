@@ -148,12 +148,12 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
             }
             Term::Cons(OptCons::Some(ty_cons), _args) => {
                 let mut brchs = Vec::new();
-                let data = self.prog.datas.values().find(|d| d.name == *ty_cons)?;
-                for cons in &data.cons {
+                for cons in &self.prog.datas[ty_cons].conss {
                     self.ctx_cnt += 1;
                     let cons_val: TermVal<IdentCtx> = Term::Cons(
-                        OptCons::Some(cons.name),
-                        cons.flds
+                        OptCons::Some(*cons),
+                        self.prog.conss[cons]
+                            .pars
                             .iter()
                             .map(|_| Term::Var(Ident::fresh(&"_").tag_ctx(self.ctx_cnt)))
                             .collect(),
@@ -202,16 +202,16 @@ impl<'prog, 'io> RunnerState<'prog, 'io> {
                 Term::Cons(OptCons::Some(val_cons), val_args),
                 Term::Cons(OptCons::Some(ty_cons), ty_args),
             ) => {
-                let data = &self.prog.datas[ty_cons];
-                let cons = data.cons.iter().find(|con| con.name == *val_cons).unwrap();
-                let subst: HashMap<Ident, TermType> = data
+                let cons = &self.prog.conss[val_cons];
+                assert_eq!(cons.data_cons, *ty_cons);
+                let subst: HashMap<Ident, TermType> = cons
                     .polys
                     .iter()
                     .zip(ty_args.iter())
                     .map(|(poly, arg)| (*poly, arg.clone()))
                     .collect();
                 let ty_args: Vec<TermType> =
-                    cons.flds.iter().map(|fld| fld.substitute(&subst)).collect();
+                    cons.pars.iter().map(|par| par.substitute(&subst)).collect();
                 for (val, ty) in val_args.iter().zip(ty_args.iter()) {
                     self.collect_free_vars(val, ty, out);
                 }

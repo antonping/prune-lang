@@ -11,14 +11,13 @@ struct PredTyScm {
 #[derive(Clone, Debug)]
 struct ConsTyScm {
     polys: Vec<Ident>,
-    flds: Vec<TermType>,
+    pars: Vec<TermType>,
     res: TermType,
 }
 
 #[allow(unused)]
 #[derive(Clone, Debug)]
 struct DataTyScm {
-    // todo: use this to check type intro. rules
     polys: Vec<Ident>,
 }
 
@@ -51,24 +50,19 @@ impl Elaborator {
         self.data_ctx.insert(data_decl.name, data_scm);
     }
 
-    fn visit_cons_ty_scm(&mut self, data_decl: &DataDecl) {
-        let res = TermType::Cons(
-            OptCons::Some(data_decl.name),
-            data_decl
-                .polys
-                .iter()
-                .map(|poly| TermType::Var(*poly))
-                .collect(),
-        );
-
-        for cons in &data_decl.cons {
-            let cons_typ = ConsTyScm {
-                polys: data_decl.polys.clone(),
-                flds: cons.flds.clone(),
-                res: res.clone(),
-            };
-            self.cons_ctx.insert(cons.name, cons_typ);
+    fn visit_cons_ty_scm(&mut self, cons_decl: &ConsDecl) {
+        for poly in &cons_decl.polys {
+            self.unifier.fresh(*poly);
         }
+        let cons_typ = ConsTyScm {
+            polys: cons_decl.polys.clone(),
+            pars: cons_decl.pars.clone(),
+            res: TermType::Cons(
+                OptCons::Some(cons_decl.data_cons),
+                cons_decl.data_args.clone(),
+            ),
+        };
+        self.cons_ctx.insert(cons_decl.name, cons_typ);
     }
 
     fn visit_pred_ty_scm(&mut self, pred_decl: &PredDecl) {
@@ -92,8 +86,8 @@ impl Elaborator {
         match term {
             Term::Var(var) => self.val_ctx[var].clone(),
             Term::Lit(lit) => TermType::Lit(lit.get_typ()),
-            Term::Cons(cons, flds) => {
-                let flds: Vec<_> = flds.iter().map(|fld| self.visit_term(fld)).collect();
+            Term::Cons(cons, args) => {
+                let args: Vec<_> = args.iter().map(|arg| self.visit_term(arg)).collect();
                 if let OptCons::Some(cons) = cons {
                     // instantiate constructor type scheme
                     let cons_scm = &self.cons_ctx[cons];
@@ -104,19 +98,19 @@ impl Elaborator {
                         .map(|poly| (*poly, Term::Var(poly.uniquify())))
                         .collect();
 
-                    let inst_flds: Vec<_> = cons_scm
-                        .flds
+                    let inst_pars: Vec<_> = cons_scm
+                        .pars
                         .iter()
-                        .map(|fld| fld.substitute(&inst_map))
+                        .map(|par| par.substitute(&inst_map))
                         .collect();
 
                     let inst_res = cons_scm.res.substitute(&inst_map);
 
-                    self.unifier.unify_many(&inst_flds, &flds).unwrap();
+                    self.unifier.unify_many(&inst_pars, &args).unwrap();
 
                     inst_res
                 } else {
-                    TermType::Cons(OptCons::None, flds)
+                    TermType::Cons(OptCons::None, args)
                 }
             }
         }
@@ -206,8 +200,8 @@ impl Elaborator {
             self.visit_data_ty_scm(data_decl);
         }
 
-        for data_decl in prog.datas.values() {
-            self.visit_cons_ty_scm(data_decl);
+        for cons_decl in prog.conss.values() {
+            self.visit_cons_ty_scm(cons_decl);
         }
 
         for pred_decl in prog.preds.values() {
