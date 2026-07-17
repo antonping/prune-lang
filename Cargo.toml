@@ -1,11 +1,11 @@
 [package]
 name = "prune-lang"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Anton Ping <antonping1999@gmail.com>"]
 edition = "2024"
 description = "Prune is a constraint logic programming language with branching heuristic."
 readme = "README.md"
-repository = "https://github.com/AntonPing/prune-lang"
+repository = "https://github.com/antonping/prune-lang"
 license = "Apache-2.0"
 keywords = ["logic-programming", "dsl", "prolog", "kanren", "smt"]
 categories = ["command-line-utilities", "compilers"]
