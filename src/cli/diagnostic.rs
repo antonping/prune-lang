@@ -140,7 +140,7 @@ impl Diagnostic {
 
     /// minimal_report shows only spans, instead of source code.
     pub fn minimal_report(&self, source: &str, verbosity: u8) -> String {
-        let mut output = format!("[{}]: {}\n", self.level, &self.title);
+        let mut output = format!("[{}]: {}\n", self.level, self.title);
         let linecol = get_line_col_vec(source);
         for descr in &self.descriptions {
             if descr.verbosity > verbosity {
@@ -164,7 +164,7 @@ impl Diagnostic {
     }
 
     pub fn report(&self, source: &str, verbosity: u8) -> String {
-        let mut output = format!("[{}]: {}\n", self.level, &self.title);
+        let mut output = format!("[{}]: {}\n", self.level, self.title);
         let linecol = get_line_col_vec(source);
         for descr in &self.descriptions {
             if descr.verbosity > verbosity {
