@@ -17,14 +17,14 @@ path = "src/main.rs"
 [dependencies]
 logos = "0.16.1"
 snailquote = "0.3.1"
-itertools = "0.14.0"
-rand = "0.10.1"
+itertools = "0.15.0"
+rand = "0.10.2"
 easy-smt = "0.3.2"
-clap = { version = "4.6.1", features = ["derive"] }
+clap = { version = "4.6.2", features = ["derive"] }
 
 [dev-dependencies]
 criterion = "0.8.2"
-insta = { version = "1.46.1", features = ["yaml"] }
+insta = { version = "1.48.0", features = ["yaml"] }
 
 [[bench]]
 name = "test_benches"
