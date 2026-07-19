@@ -115,18 +115,18 @@ impl Branch {
         rng.random_range(0..self.calls.len())
     }
 
-    pub fn left_biased_strategy(&mut self) -> usize {
+    pub fn left_biased_strategy(&self) -> usize {
         assert!(!self.calls.is_empty());
         0
     }
 
-    pub fn interleave_strategy(&mut self) -> usize {
+    pub fn interleave_strategy(&self) -> usize {
         (0..self.calls.len())
             .min_by_key(|idx| self.calls[*idx].depth)
             .unwrap()
     }
 
-    pub fn small_first_strategy(&mut self) -> usize {
+    pub fn small_first_strategy(&self) -> usize {
         (0..self.calls.len())
             .min_by_key(|idx| {
                 let call = &self.calls[*idx];
@@ -135,7 +135,7 @@ impl Branch {
             .unwrap()
     }
 
-    pub fn hybrid_strategy(&mut self) -> usize {
+    pub fn hybrid_strategy(&self) -> usize {
         (0..self.calls.len())
             .min_by_key(|idx| {
                 let call = &self.calls[*idx];
