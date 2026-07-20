@@ -3,106 +3,42 @@ use crate::cli::args::{self, CliArgs};
 
 #[derive(Debug)]
 pub struct RunnerConfig {
-    pub depth_step: usize,
-    pub depth_limit: usize,
     pub answer_limit: usize,
-    pub answer_pause: bool,
     pub solver: args::Solver,
     pub heuristic: args::Heuristic,
     pub strategy: args::Strategy,
-    pub reduction: bool,
     pub debug_mode: bool,
 }
 
 impl RunnerConfig {
     pub fn new(args: &CliArgs) -> RunnerConfig {
         RunnerConfig {
-            depth_step: args.depth_step,
-            depth_limit: args.depth_limit,
             answer_limit: args.answer_limit,
-            answer_pause: args.answer_pause,
             solver: args.solver,
             heuristic: args.heuristic,
             strategy: args.strategy,
-            reduction: args.reduction,
             debug_mode: args.debug_mode,
         }
     }
 
     pub fn reset_default(&mut self) {
-        self.depth_step = 5;
-        self.depth_limit = 100;
         self.answer_limit = usize::MAX;
     }
 
     pub fn set_param(&mut self, param: &QueryParam) {
         match param {
-            QueryParam::DepthStep(x) => {
-                self.depth_step = *x;
+            QueryParam::DepthStep(_x) => {
+                // deprecated
             }
-            QueryParam::DepthLimit(x) => {
-                self.depth_limit = *x;
+            QueryParam::DepthLimit(_x) => {
+                // deprecated
             }
             QueryParam::AnswerLimit(x) => {
                 self.answer_limit = *x;
             }
-            QueryParam::AnswerPause(x) => {
-                self.answer_pause = *x;
+            QueryParam::AnswerPause(_x) => {
+                // deprecated
             }
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct RunnerStats {
-    pub step_cnt: usize,
-    pub step_cnt_la: usize,
-    pub total_step: usize,
-    pub acc_total_step: usize,
-}
-
-impl Default for RunnerStats {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl RunnerStats {
-    pub fn new() -> RunnerStats {
-        RunnerStats {
-            step_cnt: 0,
-            step_cnt_la: 0,
-            total_step: 0,
-            acc_total_step: 0,
-        }
-    }
-
-    pub fn reset(&mut self) {
-        self.step_cnt = 0;
-        self.step_cnt_la = 0;
-        self.total_step = 0;
-    }
-
-    pub fn step(&mut self) {
-        self.step_cnt += 1;
-        self.total_step += 1;
-        self.acc_total_step += 1;
-    }
-
-    pub fn step_la(&mut self) {
-        self.step_cnt_la += 1;
-        self.total_step += 1;
-        self.acc_total_step += 1;
-    }
-
-    pub fn print_stat(&self) -> String {
-        format!(
-            "[STAT]: step = {}, step_la = {}(ratio {}), total = {}, acc_total = {} ",
-            self.step_cnt,
-            self.step_cnt_la,
-            (self.step_cnt_la as f32) / (self.step_cnt as f32 + 0.001),
-            self.total_step,
-            self.acc_total_step,
-        )
     }
 }

@@ -41,17 +41,8 @@ pub struct CliArgs {
     #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
     pub reduction: bool,
 
-    #[arg(long, default_value_t = 10, value_name = "INT")]
-    pub depth_step: usize,
-
-    #[arg(long, default_value_t = usize::MAX, value_name = "INT")]
-    pub depth_limit: usize,
-
     #[arg(long, default_value_t = usize::MAX, value_name = "INT")]
     pub answer_limit: usize,
-
-    #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
-    pub answer_pause: bool,
 
     #[arg(short, long, default_value_t = 10, value_name = "INT")]
     pub verbosity: u8,
@@ -86,10 +77,7 @@ pub fn get_test_cli_args(prog_name: PathBuf) -> CliArgs {
         heuristic: Heuristic::Hybrid,
         strategy: Strategy::Random,
         reduction: true,
-        depth_step: 10,
-        depth_limit: usize::MAX,
         answer_limit: usize::MAX,
-        answer_pause: false,
         verbosity: 10,
         dump_file: false,
         debug_mode: false,
@@ -104,7 +92,7 @@ pub fn get_bench_cli_args(
     prog_name: PathBuf,
     heuristic: Heuristic,
     reduction: bool,
-    depth_limit: usize,
+    answer_limit: usize,
 ) -> CliArgs {
     CliArgs {
         input: prog_name,
@@ -112,10 +100,7 @@ pub fn get_bench_cli_args(
         heuristic,
         strategy: Strategy::Random,
         reduction,
-        depth_step: 10,
-        depth_limit,
-        answer_limit: usize::MAX,
-        answer_pause: false,
+        answer_limit,
         verbosity: 10,
         dump_file: false,
         debug_mode: false,
