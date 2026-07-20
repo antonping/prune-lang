@@ -88,10 +88,9 @@ pub struct QueryDecl {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum QueryParam {
-    DepthStep(usize),
-    DepthLimit(usize),
     AnswerLimit(usize),
-    AnswerPause(bool),
+    TimeLimit(usize),
+    MemLimit(usize),
 }
 
 impl fmt::Display for PredDecl {

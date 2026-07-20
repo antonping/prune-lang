@@ -1,15 +1,14 @@
 use super::path::PathTrie;
-// use super::solver;
 use super::strategy::*;
 use super::*;
 use crate::cli::args::{self, CliArgs, Heuristic};
 use crate::cli::pipeline::OutputWriter;
-use crate::interp::config::RunnerConfig;
+use crate::interp::config::ExecConfig;
 
 pub struct Executor<'prog, 'io> {
     prog: &'prog Program,
     output: &'io mut OutputWriter,
-    config: RunnerConfig,
+    config: ExecConfig,
     path_trie: PathTrie,
     ansr_cnt: usize,
     rng: rngs::ThreadRng,
@@ -32,7 +31,7 @@ impl<'prog, 'io> Executor<'prog, 'io> {
             args::Solver::Encode => Box::new(super::solver::no_smt::NoSmtSolver::new()),
         };
 
-        let config = RunnerConfig::new(args);
+        let config = ExecConfig::new(args);
 
         Executor {
             prog,
@@ -45,17 +44,35 @@ impl<'prog, 'io> Executor<'prog, 'io> {
         }
     }
 
-    pub fn config_set_param(&mut self, param: &QueryParam) {
-        self.config.set_param(param);
-    }
+    pub fn run_step_loop(&mut self, query_decl: &QueryDecl) -> usize {
+        for param in &query_decl.params {
+            self.config.set_param(param);
+        }
 
-    pub fn run_step_loop(&mut self, pred: Ident) -> usize {
-        while !self.run_step(pred) {
+        loop {
+            if self.run_step(query_decl.entry) {
+                writeln!(
+                    self.output.answer,
+                    "[STOP]: The search tree has been exhausted!"
+                )
+                .unwrap();
+                return self.ansr_cnt;
+            }
             if self.ansr_cnt >= self.config.answer_limit {
-                break;
+                writeln!(self.output.answer, "[STOP]: Answer limit exceeded!").unwrap();
+                return self.ansr_cnt;
+            }
+            let time = self.config.start_time.elapsed().as_secs_f32();
+            if time > self.config.time_limit as f32 {
+                writeln!(self.output.answer, "[STOP]: Time limit exceeded!").unwrap();
+                return self.ansr_cnt;
+            }
+            let mem = memory_stats::memory_stats().unwrap().physical_mem as f32 / 1048576.0;
+            if mem > self.config.mem_limit as f32 {
+                writeln!(self.output.answer, "[STOP]: Memory limit exceeded!").unwrap();
+                return self.ansr_cnt;
             }
         }
-        return self.ansr_cnt;
     }
 
     fn run_step(&mut self, pred: Ident) -> bool {
@@ -96,14 +113,17 @@ impl<'prog, 'io> Executor<'prog, 'io> {
     }
 
     fn solve_answer(&mut self, brch: &Branch) {
-        let start = std::time::Instant::now();
+        let smt_start = std::time::Instant::now();
 
         if let Some(map) = self.solver.check_sat(&brch.prims) {
-            let duration = start.elapsed();
+            self.ansr_cnt += 1;
+            let time = self.config.start_time.elapsed().as_secs_f32();
+            let mem = memory_stats::memory_stats().unwrap().physical_mem as f32 / 1048576.0;
+            let smt_time = smt_start.elapsed();
             writeln!(
                 self.output.answer,
-                "[ANSWER]: depth = {}, solving time = {:?}",
-                brch.depth, duration
+                "[ANSWER]({}): depth={}, time={:.2}s, mem={:.2}MB, SMT={:.2?}",
+                self.ansr_cnt, brch.depth, time, mem, smt_time
             )
             .unwrap();
 
@@ -122,7 +142,6 @@ impl<'prog, 'io> Executor<'prog, 'io> {
                 )
                 .unwrap();
             }
-            self.ansr_cnt += 1;
         }
     }
 }

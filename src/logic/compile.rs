@@ -72,10 +72,9 @@ fn compile_query(query: &ast::QueryDecl) -> QueryDecl {
 
 fn compile_query_param(param: &ast::QueryParam) -> QueryParam {
     match param {
-        ast::QueryParam::DepthStep(x) => QueryParam::DepthStep(*x),
-        ast::QueryParam::DepthLimit(x) => QueryParam::DepthLimit(*x),
         ast::QueryParam::AnswerLimit(x) => QueryParam::AnswerLimit(*x),
-        ast::QueryParam::AnswerPause(x) => QueryParam::AnswerPause(*x),
+        ast::QueryParam::TimeLimit(x) => QueryParam::TimeLimit(*x),
+        ast::QueryParam::MemLimit(x) => QueryParam::MemLimit(*x),
     }
 }
 

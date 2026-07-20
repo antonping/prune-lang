@@ -44,6 +44,12 @@ pub struct CliArgs {
     #[arg(long, default_value_t = usize::MAX, value_name = "INT")]
     pub answer_limit: usize,
 
+    #[arg(long, default_value_t = usize::MAX, value_name = "INT")]
+    pub time_limit: usize,
+
+    #[arg(long, default_value_t = usize::MAX, value_name = "INT")]
+    pub mem_limit: usize,
+
     #[arg(short, long, default_value_t = 10, value_name = "INT")]
     pub verbosity: u8,
 
@@ -78,6 +84,8 @@ pub fn get_test_cli_args(prog_name: PathBuf) -> CliArgs {
         strategy: Strategy::Random,
         reduction: true,
         answer_limit: usize::MAX,
+        time_limit: usize::MAX,
+        mem_limit: usize::MAX,
         verbosity: 10,
         dump_file: false,
         debug_mode: false,
@@ -101,6 +109,8 @@ pub fn get_bench_cli_args(
         strategy: Strategy::Random,
         reduction,
         answer_limit,
+        time_limit: usize::MAX,
+        mem_limit: usize::MAX,
         verbosity: 10,
         dump_file: false,
         debug_mode: false,

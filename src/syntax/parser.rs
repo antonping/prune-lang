@@ -821,51 +821,33 @@ impl<'src> Parser<'src> {
         })
     }
 
-    fn parse_pos_int(&mut self) -> ParseResult<usize> {
-        match self.peek_token() {
-            Token::Int => {
-                let x = self.peek_slice().parse::<i64>().unwrap();
-                if x >= 0 {
-                    self.next_token();
-                    Ok(x as usize)
-                } else {
-                    Err(ParseError::FailedToParse(
-                        "positive integer",
-                        self.peek_token(),
-                        self.peek_span().clone(),
-                    ))
-                }
-            }
-            _ => Err(ParseError::FailedToParse(
-                "positive integer",
-                self.peek_token(),
-                self.peek_span().clone(),
-            )),
-        }
-    }
-
-    fn parse_bool(&mut self) -> ParseResult<bool> {
-        match self.peek_token() {
-            Token::Bool => {
-                let x = self.peek_slice().parse::<bool>().unwrap();
-                self.next_token();
-                Ok(x)
-            }
-            _ => Err(ParseError::FailedToParse(
-                "boolean literal",
-                self.peek_token(),
-                self.peek_span().clone(),
-            )),
-        }
-    }
-
     fn parse_query_decl(&mut self) -> ParseResult<QueryDecl> {
         let start = self.start_pos();
         self.match_token(Token::Query)?;
         let entry = self.parse_lower_var()?;
         let params = self.delimited_list(Token::LParen, Token::Comma, Token::RParen, |par| {
-            par.parse_query_param()
+            let (name, val, span) = par.parse_query_param()?;
+            match (name.ident.as_str(), val) {
+                ("depth_step", _) => Ok(None),
+                ("depth_limit", _) => Ok(None),
+                ("answer_limit", LitVal::Int(x)) if x > 0 => {
+                    Ok(Some((QueryParam::AnswerLimit(x as usize), span)))
+                }
+                ("answer_pause", _) => Ok(None),
+                ("time_limit", LitVal::Int(x)) if x > 0 => {
+                    Ok(Some((QueryParam::TimeLimit(x as usize), span)))
+                }
+                ("mem_limit", LitVal::Int(x)) if x > 0 => {
+                    Ok(Some((QueryParam::MemLimit(x as usize), span)))
+                }
+                _ => Err(ParseError::FailedToParse(
+                    "query parameter",
+                    Token::LowerIdent,
+                    span,
+                )),
+            }
         })?;
+        let params = params.into_iter().flatten().collect();
         let end = self.end_pos();
         let span = Span { start, end };
         Ok(QueryDecl {
@@ -875,51 +857,14 @@ impl<'src> Parser<'src> {
         })
     }
 
-    fn parse_query_param(&mut self) -> ParseResult<(QueryParam, Span)> {
+    fn parse_query_param(&mut self) -> ParseResult<(Var, LitVal, Span)> {
         let start = self.start_pos();
         let name = self.parse_lower_var()?;
-
-        match name.ident.as_str() {
-            "depth_step" => {
-                self.match_token(Token::Equal)?;
-                let val = self.parse_pos_int()?;
-                let end = self.end_pos();
-                let span = Span { start, end };
-                Ok((QueryParam::DepthStep(val), span))
-            }
-
-            "depth_limit" => {
-                self.match_token(Token::Equal)?;
-                let val = self.parse_pos_int()?;
-                let end = self.end_pos();
-                let span = Span { start, end };
-                Ok((QueryParam::DepthLimit(val), span))
-            }
-
-            "answer_limit" => {
-                self.match_token(Token::Equal)?;
-                let val = self.parse_pos_int()?;
-                let end = self.end_pos();
-                let span = Span { start, end };
-                Ok((QueryParam::AnswerLimit(val), span))
-            }
-            "answer_pause" => {
-                self.match_token(Token::Equal)?;
-                let val = self.parse_bool()?;
-                let end = self.end_pos();
-                let span = Span { start, end };
-                Ok((QueryParam::AnswerPause(val), span))
-            }
-            _ => {
-                let end = self.end_pos();
-                let span = Span { start, end };
-                Err(ParseError::FailedToParse(
-                    "query parameter",
-                    Token::LowerIdent,
-                    span,
-                ))
-            }
-        }
+        self.match_token(Token::Equal)?;
+        let val = self.parse_lit_val()?;
+        let end = self.end_pos();
+        let span = Span { start, end };
+        Ok((name, val, span))
     }
 
     fn skip_failure_tokens(&mut self) {

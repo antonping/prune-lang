@@ -128,10 +128,7 @@ impl<'a> Pipeline<'a> {
         let mut res_vec = Vec::new();
         let mut runner = interp::executor::Executor::new(prog, &mut output, self.args);
         for query_decl in &prog.querys {
-            for param in &query_decl.params {
-                runner.config_set_param(param);
-            }
-            let res = runner.run_step_loop(query_decl.entry);
+            let res = runner.run_step_loop(query_decl);
             res_vec.push(res);
         }
         Ok(res_vec)
