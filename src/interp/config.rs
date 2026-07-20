@@ -9,6 +9,7 @@ pub struct RunnerConfig {
     pub answer_pause: bool,
     pub solver: args::Solver,
     pub heuristic: args::Heuristic,
+    pub strategy: args::Strategy,
     pub reduction: bool,
     pub debug_mode: bool,
 }
@@ -22,6 +23,7 @@ impl RunnerConfig {
             answer_pause: args.answer_pause,
             solver: args.solver,
             heuristic: args.heuristic,
+            strategy: args.strategy,
             reduction: args.reduction,
             debug_mode: args.debug_mode,
         }

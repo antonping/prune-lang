@@ -126,6 +126,48 @@ impl PathTrie {
         }
     }
 
+    pub fn shortest_unexpaned_path(&self) -> Vec<(usize, usize)> {
+        let mut min_depth = usize::MAX;
+        let mut min_path = Vec::new();
+        let mut cur_depth = 0;
+        let mut cur_path = Vec::new();
+        self.shortest_unexpaned_path_help(
+            &mut min_depth,
+            &mut min_path,
+            &mut cur_depth,
+            &mut cur_path,
+        );
+        min_path
+    }
+
+    fn shortest_unexpaned_path_help(
+        &self,
+        min_depth: &mut usize,
+        min_path: &mut Vec<(usize, usize)>,
+        cur_depth: &mut usize,
+        cur_path: &mut Vec<(usize, usize)>,
+    ) {
+        if *cur_depth >= *min_depth {
+            return;
+        }
+        match self {
+            PathTrie::Node(call_idx, children) => {
+                assert!(!children.is_empty());
+                for (rule_idx, child) in children {
+                    *cur_depth += 1;
+                    cur_path.push((*call_idx, *rule_idx));
+                    child.shortest_unexpaned_path_help(min_depth, min_path, cur_depth, cur_path);
+                    *cur_depth -= 1;
+                    cur_path.pop();
+                }
+            }
+            PathTrie::Unexpanded => {
+                *min_depth = *cur_depth;
+                *min_path = cur_path.clone();
+            }
+        }
+    }
+
     pub fn expand_trie(&mut self, path: &[(usize, usize)], subtrie: PathTrie) {
         let mut temp_self = self;
         let mut temp_path = path;

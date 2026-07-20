@@ -59,7 +59,10 @@ impl<'prog, 'io> Executor<'prog, 'io> {
     }
 
     fn run_step(&mut self, pred: Ident) -> bool {
-        let path = self.path_trie.random_unexpaned_path(&mut self.rng);
+        let path = match self.config.strategy {
+            args::Strategy::BFS => self.path_trie.shortest_unexpaned_path(),
+            args::Strategy::Random => self.path_trie.random_unexpaned_path(&mut self.rng),
+        };
         let brch = get_branch_from_path(self.prog, pred, &path);
 
         if self.is_solved(&brch) {
