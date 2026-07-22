@@ -147,4 +147,4 @@ begin
     end
 end
 
-query example(depth_step=5, depth_limit=200, answer_limit=1)
+query example(answer_limit=1, time_limit=10)

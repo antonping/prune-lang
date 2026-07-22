@@ -43,4 +43,4 @@ begin
     guard is_balanced(tree);
 end
 
-query example(depth_step=5, depth_limit=100, answer_limit=100)
+query example(time_limit=10)

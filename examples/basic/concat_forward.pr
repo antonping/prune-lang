@@ -19,7 +19,7 @@ end
 
 function example(zs: List[Int])
 begin
-    guard concat(rev_nat_list(100), rev_nat_list(100)) = zs;
+    guard concat(rev_nat_list(10), rev_nat_list(10)) = zs;
 end
 
-query example(depth_step=50, depth_limit=1000, answer_limit=1)
+query example(time_limit=10)

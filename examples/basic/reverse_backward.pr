@@ -24,7 +24,7 @@ end
 
 function example(xs: List[Int])
 begin
-    guard rev_nat_list(100) = reverse(xs);
+    guard rev_nat_list(10) = reverse(xs);
 end
 
-query example(depth_step=50, depth_limit=1000, answer_limit=1)
+query example(time_limit=10)

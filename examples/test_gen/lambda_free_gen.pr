@@ -44,4 +44,4 @@ begin
     guard free_vars(expr) = Nil;
 end
 
-query example(depth_step=5, depth_limit=30, answer_limit=100)
+query example(time_limit=10)

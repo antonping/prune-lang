@@ -79,7 +79,7 @@ pub fn parse_cli_args() -> CliArgs {
 pub fn get_test_cli_args(prog_name: PathBuf) -> CliArgs {
     CliArgs {
         input: prog_name,
-        solver: Solver::Encode,
+        solver: Solver::Z3,
         heuristic: Heuristic::Hybrid,
         strategy: Strategy::Random,
         reduction: true,

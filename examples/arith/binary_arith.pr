@@ -133,4 +133,4 @@ begin
     guard add(mul(x, x), mul(y, y)) = mul(z, z);
 end
 
-query pythagorean_triple(depth_step=20, depth_limit=500, answer_limit=10)
+query pythagorean_triple(time_limit=10)

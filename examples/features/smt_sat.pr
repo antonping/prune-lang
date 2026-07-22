@@ -6,4 +6,4 @@ begin
     guard a * a + b * b = c * c;
 end
 
-query example(depth_step=1, depth_limit=1, answer_limit=1)
+query example(time_limit=10)

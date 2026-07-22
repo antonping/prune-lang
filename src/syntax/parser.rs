@@ -828,17 +828,14 @@ impl<'src> Parser<'src> {
         let params = self.delimited_list(Token::LParen, Token::Comma, Token::RParen, |par| {
             let (name, val, span) = par.parse_query_param()?;
             match (name.ident.as_str(), val) {
-                ("depth_step", _) => Ok(None),
-                ("depth_limit", _) => Ok(None),
                 ("answer_limit", LitVal::Int(x)) if x > 0 => {
-                    Ok(Some((QueryParam::AnswerLimit(x as usize), span)))
+                    Ok((QueryParam::AnswerLimit(x as usize), span))
                 }
-                ("answer_pause", _) => Ok(None),
                 ("time_limit", LitVal::Int(x)) if x > 0 => {
-                    Ok(Some((QueryParam::TimeLimit(x as usize), span)))
+                    Ok((QueryParam::TimeLimit(x as usize), span))
                 }
                 ("mem_limit", LitVal::Int(x)) if x > 0 => {
-                    Ok(Some((QueryParam::MemLimit(x as usize), span)))
+                    Ok((QueryParam::MemLimit(x as usize), span))
                 }
                 _ => Err(ParseError::FailedToParse(
                     "query parameter",
@@ -847,7 +844,6 @@ impl<'src> Parser<'src> {
                 )),
             }
         })?;
-        let params = params.into_iter().flatten().collect();
         let end = self.end_pos();
         let span = Span { start, end };
         Ok(QueryDecl {
