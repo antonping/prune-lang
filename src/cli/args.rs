@@ -22,6 +22,7 @@ pub enum Heuristic {
 pub enum Strategy {
     BFS,
     Random,
+    Weighted,
 }
 
 #[derive(Parser, Debug, Clone)]

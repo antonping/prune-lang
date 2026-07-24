@@ -110,7 +110,7 @@ impl Branch {
         self.calls.remove(call_idx)
     }
 
-    pub fn random_strategy(&mut self, rng: &mut rand::rngs::ThreadRng) -> usize {
+    pub fn random_strategy(&self, rng: &mut rand::rngs::ThreadRng) -> usize {
         assert!(!self.calls.is_empty());
         rng.random_range(0..self.calls.len())
     }

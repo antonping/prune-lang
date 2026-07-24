@@ -1,7 +1,7 @@
 use super::path::PathTrie;
 use super::strategy::*;
 use super::*;
-use crate::cli::args::{self, CliArgs, Heuristic};
+use crate::cli::args::{self, CliArgs};
 use crate::cli::pipeline::OutputWriter;
 use crate::interp::config::ExecConfig;
 
@@ -77,25 +77,28 @@ impl<'prog, 'io> Executor<'prog, 'io> {
 
     fn run_step(&mut self, pred: Ident) -> bool {
         let path = match self.config.strategy {
-            args::Strategy::BFS => self.path_trie.shortest_unexpaned_path(),
-            args::Strategy::Random => self.path_trie.random_unexpaned_path(&mut self.rng),
+            args::Strategy::BFS => self.path_trie.choose_shortest_path(),
+            args::Strategy::Random => self.path_trie.choose_random_path(&mut self.rng),
+            args::Strategy::Weighted => self.path_trie.choose_random_path_weighted(&mut self.rng),
         };
         let brch = get_branch_from_path(self.prog, pred, &path);
 
         if self.is_solved(&brch) {
-            self.solve_answer(&brch);
+            if self.solve_answer(&brch) {
+                self.path_trie.incr_weight(&path);
+            }
             return self.path_trie.remove_trie(&path);
         }
 
-        let res = branch_split(self.prog, &brch, self.config.heuristic);
+        let res = self.branch_split(&brch);
         if res.is_empty() {
             return self.path_trie.remove_trie(&path);
         } else {
-            let mut subtrie = PathTrie::new();
+            let mut subtries = PathTrie::new();
             for (_brch, subpath) in res {
-                subtrie.insert(&subpath);
+                subtries.insert(&subpath);
             }
-            self.path_trie.expand_trie(&path, subtrie);
+            self.path_trie.expand_trie(&path, subtries);
             return false;
         }
     }
@@ -112,7 +115,7 @@ impl<'prog, 'io> Executor<'prog, 'io> {
         true
     }
 
-    fn solve_answer(&mut self, brch: &Branch) {
+    fn solve_answer(&mut self, brch: &Branch) -> bool {
         let smt_start = std::time::Instant::now();
 
         if let Some(map) = self.solver.check_sat(&brch.prims) {
@@ -142,43 +145,47 @@ impl<'prog, 'io> Executor<'prog, 'io> {
                 )
                 .unwrap();
             }
+
+            true
+        } else {
+            false
         }
     }
-}
 
-fn branch_split(
-    prog: &Program,
-    brch: &Branch,
-    heur: Heuristic,
-) -> Vec<(Branch, Vec<(usize, usize)>)> {
-    if brch.calls.is_empty() {
-        // split by free variable
-        if let Some(brchs) = split_free_var(prog, brch) {
-            brchs
-                .into_iter()
-                .enumerate()
-                .map(|(idx, brch)| (brch, vec![(0, idx)]))
-                .collect()
-        } else {
-            panic!("this branch is already solved!!")
-        }
-    } else {
-        // split by predicate calls
-        let call_idx = match heur {
-            args::Heuristic::LeftBiased => brch.left_biased_strategy(),
-            args::Heuristic::Interleave => brch.interleave_strategy(),
-            args::Heuristic::SmallFirst => brch.small_first_strategy(),
-            args::Heuristic::Hybrid => brch.hybrid_strategy(),
-            args::Heuristic::LookAhead => todo!(),
-            args::Heuristic::Random => todo!(),
-        };
-        let mut res = Vec::new();
-        for &rule_idx in brch.calls[call_idx].looks.iter() {
-            if let Some((brch, path)) = apply_rule_with_reduction(prog, brch, call_idx, rule_idx) {
-                res.push((brch, path));
+    fn branch_split(&mut self, brch: &Branch) -> Vec<(Branch, Vec<(usize, usize)>)> {
+        if brch.calls.is_empty() {
+            // split by free variable
+            if let Some(brchs) = split_free_var(self.prog, brch) {
+                brchs
+                    .into_iter()
+                    .enumerate()
+                    .map(|(idx, brch)| (brch, vec![(0, idx)]))
+                    .collect()
+            } else {
+                panic!("this branch is already solved!!")
             }
+        } else {
+            // split by predicate calls
+            let call_idx = match self.config.heuristic {
+                args::Heuristic::LeftBiased => brch.left_biased_strategy(),
+                args::Heuristic::Interleave => brch.interleave_strategy(),
+                args::Heuristic::SmallFirst => brch.small_first_strategy(),
+                args::Heuristic::Hybrid => brch.hybrid_strategy(),
+                args::Heuristic::LookAhead => todo!(),
+                args::Heuristic::Random => brch.random_strategy(&mut self.rng),
+            };
+            let mut res = Vec::new();
+            for &rule_idx in brch.calls[call_idx].looks.iter() {
+                if let Some((brch, path)) =
+                    apply_rule_with_reduction(self.prog, brch, call_idx, rule_idx)
+                {
+                    if self.solver.check_sat(&brch.prims).is_some() {
+                        res.push((brch, path));
+                    }
+                }
+            }
+            res
         }
-        res
     }
 }
 
