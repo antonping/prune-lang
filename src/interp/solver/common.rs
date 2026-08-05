@@ -5,6 +5,12 @@ pub trait PrimSolver {
         &mut self,
         prims: &[(Prim, Vec<AtomVal<IdentCtx>>)],
     ) -> Option<HashMap<IdentCtx, LitVal>>;
+
+    fn generate_sat(
+        &mut self,
+        rng: &mut rngs::ThreadRng,
+        prims: &[(Prim, Vec<AtomVal<IdentCtx>>)],
+    ) -> Option<HashMap<IdentCtx, LitVal>>;
 }
 
 pub fn infer_type(prims: &[(Prim, Vec<AtomVal<IdentCtx>>)]) -> HashMap<IdentCtx, LitType> {

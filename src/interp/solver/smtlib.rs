@@ -45,48 +45,7 @@ impl SmtLibSolver {
         SmtLibSolver { ctx }
     }
 
-    pub fn check_sat(
-        &mut self,
-        prims: &[(Prim, Vec<AtomVal<IdentCtx>>)],
-    ) -> Option<HashMap<IdentCtx, LitVal>> {
-        // fast path for empty solver query
-        if prims.is_empty() {
-            return Some(HashMap::new());
-        }
-
-        // reset solver state
-        self.ctx.pop().unwrap();
-        self.ctx.push().unwrap();
-
-        let ty_map: HashMap<IdentCtx, LitType> = infer_type(prims);
-        let sexp_map = self.solve_constraints(prims, &ty_map);
-
-        let check_res = self.ctx.check().unwrap();
-        if check_res == easy_smt::Response::Sat {
-            let vars: Vec<IdentCtx> = ty_map.keys().copied().collect();
-            let res = vars
-                .iter()
-                .cloned()
-                .zip(
-                    self.ctx
-                        .get_value(vars.iter().map(|var| sexp_map[var]).collect())
-                        .unwrap()
-                        .iter()
-                        .map(|(_var, val)| self.sexp_to_lit_val(*val).unwrap()),
-                )
-                .collect();
-
-            Some(res)
-        } else {
-            None
-        }
-    }
-
-    fn solve_constraints(
-        &mut self,
-        prims: &[(Prim, Vec<AtomVal<IdentCtx>>)],
-        ty_map: &HashMap<IdentCtx, LitType>,
-    ) -> HashMap<IdentCtx, SExpr> {
+    fn declare_vars(&mut self, ty_map: &HashMap<IdentCtx, LitType>) -> HashMap<IdentCtx, SExpr> {
         let sexp_map: HashMap<IdentCtx, SExpr> = ty_map
             .iter()
             .map(|(var, typ)| {
@@ -101,10 +60,18 @@ impl SmtLibSolver {
             })
             .collect();
 
+        sexp_map
+    }
+
+    fn add_constraints(
+        &mut self,
+        sexp_map: &HashMap<IdentCtx, SExpr>,
+        prims: &[(Prim, Vec<AtomVal<IdentCtx>>)],
+    ) {
         for (prim, args) in prims {
             let args: Vec<SExpr> = args
                 .iter()
-                .map(|arg| self.atom_to_sexp(arg, &sexp_map))
+                .map(|arg| self.atom_to_sexp(arg, sexp_map))
                 .collect();
 
             match (prim, &args[..]) {
@@ -154,8 +121,6 @@ impl SmtLibSolver {
                 }
             }
         }
-
-        sexp_map
     }
 
     fn atom_to_sexp(&self, atom: &AtomVal<IdentCtx>, map: &HashMap<IdentCtx, SExpr>) -> SExpr {
@@ -217,7 +182,8 @@ impl common::PrimSolver for SmtLibSolver {
         self.ctx.push().unwrap();
 
         let ty_map: HashMap<IdentCtx, LitType> = infer_type(prims);
-        let sexp_map = self.solve_constraints(prims, &ty_map);
+        let sexp_map = self.declare_vars(&ty_map);
+        self.add_constraints(&sexp_map, prims);
 
         let check_res = self.ctx.check().unwrap();
         if check_res == easy_smt::Response::Sat {
@@ -238,5 +204,81 @@ impl common::PrimSolver for SmtLibSolver {
         } else {
             None
         }
+    }
+
+    fn generate_sat(
+        &mut self,
+        rng: &mut rngs::ThreadRng,
+        prims: &[(Prim, Vec<AtomVal<IdentCtx>>)],
+    ) -> Option<HashMap<IdentCtx, LitVal>> {
+        // fast path for empty solver query
+        if prims.is_empty() {
+            return Some(HashMap::new());
+        }
+
+        // reset solver state
+        self.ctx.pop().unwrap();
+        self.ctx.push().unwrap();
+
+        let ty_map: HashMap<IdentCtx, LitType> = infer_type(prims);
+        let sexp_map = self.declare_vars(&ty_map);
+        self.add_constraints(&sexp_map, prims);
+
+        if self.ctx.check().unwrap() != easy_smt::Response::Sat {
+            return None;
+        }
+
+        let mut vars: Vec<IdentCtx> = ty_map.keys().copied().collect();
+        let mut count = 0;
+
+        while !vars.is_empty() && count < 10 {
+            let var = vars.remove(rng.random_range(0..vars.len()));
+            let value = match ty_map[&var] {
+                LitType::TyInt => self.ctx.numeral(rng.random::<i32>() as i64),
+                LitType::TyFloat => todo!(),
+                LitType::TyBool => {
+                    if rng.random_bool(0.5) {
+                        self.ctx.true_()
+                    } else {
+                        self.ctx.false_()
+                    }
+                }
+                LitType::TyChar => todo!(),
+            };
+            let res = self
+                .ctx
+                .check_assuming(vec![self.ctx.eq(sexp_map[&var], value)])
+                .unwrap();
+            if res == easy_smt::Response::Sat {
+                count = 0;
+                self.ctx.assert(self.ctx.eq(sexp_map[&var], value)).unwrap();
+                let check_res = self.ctx.check().unwrap();
+                if check_res != easy_smt::Response::Sat {
+                    return None;
+                }
+            } else {
+                count += 1;
+                vars.push(var);
+            }
+        }
+
+        let check_res = self.ctx.check().unwrap();
+        if check_res != easy_smt::Response::Sat {
+            return None;
+        }
+        let vars: Vec<IdentCtx> = ty_map.keys().copied().collect();
+        let res = vars
+            .iter()
+            .cloned()
+            .zip(
+                self.ctx
+                    .get_value(vars.iter().map(|var| sexp_map[var]).collect())
+                    .unwrap()
+                    .iter()
+                    .map(|(_var, val)| self.sexp_to_lit_val(*val).unwrap()),
+            )
+            .collect();
+
+        Some(res)
     }
 }

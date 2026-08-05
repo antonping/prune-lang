@@ -118,7 +118,7 @@ impl<'prog, 'io> Executor<'prog, 'io> {
     fn solve_answer(&mut self, brch: &Branch) -> bool {
         let smt_start = std::time::Instant::now();
 
-        if let Some(map) = self.solver.check_sat(&brch.prims) {
+        if let Some(map) = self.solver.generate_sat(&mut self.rng, &brch.prims) {
             self.ansr_cnt += 1;
             let time = self.config.start_time.elapsed().as_secs_f32();
             let mem = memory_stats::memory_stats().unwrap().physical_mem as f32 / 1048576.0;

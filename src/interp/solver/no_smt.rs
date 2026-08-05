@@ -25,4 +25,16 @@ impl common::PrimSolver for NoSmtSolver {
             panic!("no solver for unsolved primitives!")
         }
     }
+
+    fn generate_sat(
+        &mut self,
+        _rng: &mut rngs::ThreadRng,
+        prims: &[(Prim, Vec<AtomVal<IdentCtx>>)],
+    ) -> Option<HashMap<IdentCtx, LitVal>> {
+        if prims.is_empty() {
+            Some(HashMap::new())
+        } else {
+            panic!("no solver for unsolved primitives!")
+        }
+    }
 }
