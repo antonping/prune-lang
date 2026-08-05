@@ -188,9 +188,9 @@ pub fn reinterp_term(term: &TermVal<IdentCtx>) -> TermVal<IdentCtx> {
     match term {
         Term::Cons(cons, args) => match cons {
             OptCons::Some(c) => match c.name.as_str() {
-                "%Pos" => Term::Lit(LitVal::Int(bit_list_to_uint(&args[0]) as i64)),
+                "%Pos" => Term::Lit(LitVal::Int(bit_list_to_uint(&args[0]) as i32)),
                 "%Zero" => Term::Lit(LitVal::Int(0)),
-                "%Neg" => Term::Lit(LitVal::Int(-(bit_list_to_uint(&args[0]) as i64))),
+                "%Neg" => Term::Lit(LitVal::Int(-(bit_list_to_uint(&args[0]) as i32))),
                 "%F" => Term::Lit(LitVal::Bool(false)),
                 "%T" => Term::Lit(LitVal::Bool(true)),
                 _ => Term::Cons(*cons, args.iter().map(reinterp_term).collect()),

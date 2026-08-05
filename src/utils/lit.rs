@@ -36,8 +36,8 @@ impl FromStr for LitType {
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum LitVal {
-    Int(i64),
-    Float(f64),
+    Int(i32),
+    Float(f32),
     Bool(bool),
     Char(char),
 }
@@ -68,11 +68,11 @@ impl FromStr for LitVal {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(x) = s.parse::<i64>() {
+        if let Ok(x) = s.parse::<i32>() {
             return Ok(LitVal::Int(x));
         }
 
-        if let Ok(x) = s.parse::<f64>() {
+        if let Ok(x) = s.parse::<f32>() {
             return Ok(LitVal::Float(x));
         }
 

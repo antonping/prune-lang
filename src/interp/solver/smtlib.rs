@@ -141,10 +141,10 @@ impl SmtLibSolver {
     }
 
     fn sexp_to_lit_val(&self, sexpr: SExpr) -> Option<LitVal> {
-        if let Some(res) = self.ctx.get_i64(sexpr) {
+        if let Some(res) = self.ctx.get_i32(sexpr) {
             return Some(LitVal::Int(res));
         }
-        if let Some(res) = self.ctx.get_f64(sexpr) {
+        if let Some(res) = self.ctx.get_f32(sexpr) {
             return Some(LitVal::Float(res));
         }
         if let Some(res) = self.ctx.get_atom(sexpr) {

@@ -190,12 +190,12 @@ impl<'src> Parser<'src> {
     fn parse_lit_val(&mut self) -> ParseResult<LitVal> {
         match self.peek_token() {
             Token::Int => {
-                let x = self.peek_slice().parse::<i64>().unwrap();
+                let x = self.peek_slice().parse::<i32>().unwrap();
                 self.next_token();
                 Ok(LitVal::Int(x))
             }
             Token::Float => {
-                let x = self.peek_slice().parse::<f64>().unwrap();
+                let x = self.peek_slice().parse::<f32>().unwrap();
                 self.next_token();
                 Ok(LitVal::Float(x))
             }

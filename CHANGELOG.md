@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add time and memory limit parameters.
 - Support randomized SMT constraint solving.
 
+### Changed
+
+- Change int and float literals from 64-bit to 32-bit.
+
 ### Removed
 
 - Remove IDDFS search algorithm and related parameters.

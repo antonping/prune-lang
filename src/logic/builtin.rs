@@ -329,12 +329,12 @@ pub fn replace_lit_val(term: &mut TermVal) {
     }
 }
 
-pub fn int_to_bit_int(n: i64) -> TermVal {
+pub fn int_to_bit_int(n: i32) -> TermVal {
     if n == 0 {
         return Term::Cons(OptCons::Some(Ident::dummy(&"%Zero")), vec![]);
     }
     let (sign, abs) = if n > 0 {
-        (Ident::dummy(&"%Pos"), n as u64)
+        (Ident::dummy(&"%Pos"), n as u32)
     } else {
         (Ident::dummy(&"%Neg"), n.unsigned_abs())
     };
@@ -342,7 +342,7 @@ pub fn int_to_bit_int(n: i64) -> TermVal {
     Term::Cons(OptCons::Some(sign), vec![bit_list])
 }
 
-pub fn uint_to_bit_list(n: u64) -> TermVal {
+pub fn uint_to_bit_list(n: u32) -> TermVal {
     assert!(n > 0);
     if n == 1 {
         return Term::Cons(OptCons::Some(Ident::dummy(&"%Nil")), vec![]);
