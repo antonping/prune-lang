@@ -20,9 +20,8 @@ pub enum Heuristic {
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Strategy {
-    BFS,
-    Random,
-    Weighted,
+    Generator,
+    Enumerator,
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -36,7 +35,7 @@ pub struct CliArgs {
     #[arg(long, default_value = "hybrid", value_name = "HEURISTIC")]
     pub heuristic: Heuristic,
 
-    #[arg(long, default_value = "random", value_name = "STRATEGY")]
+    #[arg(long, default_value = "generator", value_name = "STRATEGY")]
     pub strategy: Strategy,
 
     #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
@@ -82,7 +81,7 @@ pub fn get_test_cli_args(prog_name: PathBuf) -> CliArgs {
         input: prog_name,
         solver: Solver::Z3,
         heuristic: Heuristic::Hybrid,
-        strategy: Strategy::Random,
+        strategy: Strategy::Generator,
         reduction: true,
         answer_limit: usize::MAX,
         time_limit: usize::MAX,
@@ -107,7 +106,7 @@ pub fn get_bench_cli_args(
         input: prog_name,
         solver: Solver::Z3,
         heuristic,
-        strategy: Strategy::Random,
+        strategy: Strategy::Generator,
         reduction,
         answer_limit,
         time_limit: usize::MAX,

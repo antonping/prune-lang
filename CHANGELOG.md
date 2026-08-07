@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add search strategy to CLI parameters.
 - Add time and memory limit parameters.
 - Support randomized SMT constraint solving.
+- Implement size-based search algorithm as generator.
 
 ### Changed
 

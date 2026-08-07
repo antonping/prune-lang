@@ -8,9 +8,10 @@ use crate::logic::ast::*;
 use rand::*;
 use std::collections::HashMap;
 
+pub mod branch;
 pub mod config;
-pub mod executor;
+pub mod enumerator;
+pub mod generator;
 pub mod path;
 pub mod progagate;
 pub mod solver;
-pub mod strategy;
