@@ -1,17 +1,15 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use prune_lang::cli::args::Heuristic::LookAhead;
 use prune_lang::cli::{self, args::Heuristic};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 const TIMEOUT: u64 = 30;
 
-const HEURISTICS: [Heuristic; 6] = [
+const HEURISTICS: [Heuristic; 5] = [
     Heuristic::LeftBiased,
     Heuristic::Interleave,
     Heuristic::SmallFirst,
     Heuristic::Hybrid,
-    Heuristic::LookAhead,
     Heuristic::Random,
 ];
 
@@ -22,9 +20,6 @@ fn run_benchmark(c: &mut Criterion, name: &str, depth_limits: &[usize]) {
 
     for heuristic in HEURISTICS.iter() {
         for reduction in [false, true] {
-            if *heuristic == LookAhead && reduction == false {
-                continue;
-            }
             for depth_limit in depth_limits.iter() {
                 let start = Instant::now();
                 group.bench_with_input(

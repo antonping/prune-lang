@@ -5,7 +5,7 @@ use clap::{Parser, ValueEnum};
 pub enum Solver {
     Z3,
     CVC5,
-    Encode,
+    NoSmt,
 }
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -14,7 +14,6 @@ pub enum Heuristic {
     Interleave,
     SmallFirst,
     Hybrid,
-    LookAhead,
     Random,
 }
 
@@ -29,7 +28,7 @@ pub enum Strategy {
 pub struct CliArgs {
     pub input: PathBuf,
 
-    #[arg(long, default_value = "encode", value_name = "SOLVER")]
+    #[arg(long, default_value = "no-smt", value_name = "SOLVER")]
     pub solver: Solver,
 
     #[arg(long, default_value = "hybrid", value_name = "HEURISTIC")]

@@ -28,7 +28,7 @@ impl<'prog, 'io> Generator<'prog, 'io> {
             args::Solver::CVC5 => Box::new(super::solver::smtlib::SmtLibSolver::new(
                 super::solver::smtlib::SolverBackend::CVC5,
             )),
-            args::Solver::Encode => Box::new(super::solver::no_smt::NoSmtSolver::new()),
+            args::Solver::NoSmt => Box::new(super::solver::no_smt::NoSmtSolver::new()),
         };
 
         let config = ExecConfig::new(args);
@@ -144,7 +144,6 @@ impl<'prog, 'io> Generator<'prog, 'io> {
             args::Heuristic::Interleave => brch.interleave_strategy(),
             args::Heuristic::SmallFirst => brch.small_first_strategy(),
             args::Heuristic::Hybrid => brch.hybrid_strategy(),
-            args::Heuristic::LookAhead => todo!(),
             args::Heuristic::Random => brch.random_strategy(&mut self.rng),
         };
         let mut res = Vec::new();

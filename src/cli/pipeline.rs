@@ -68,7 +68,7 @@ impl<'a> Pipeline<'a> {
 
         let mut prog = self.compile_pass(&prog);
 
-        if self.args.solver == args::Solver::Encode {
+        if self.args.solver == args::Solver::NoSmt {
             prog.extend_builtin();
             prog.replace_builtin();
         }
