@@ -3,12 +3,12 @@ use super::path::PathTrie;
 use super::*;
 use crate::cli::args::{self, CliArgs};
 use crate::cli::pipeline::OutputWriter;
-use crate::interp::config::ExecConfig;
+use crate::interp;
 
 pub struct Enumerator<'prog, 'io> {
     prog: &'prog Program,
     output: &'io mut OutputWriter,
-    config: ExecConfig,
+    config: interp::config::ExecConfig,
     path_trie: PathTrie,
     ansr_cnt: usize,
     rng: rngs::ThreadRng,
@@ -21,17 +21,8 @@ impl<'prog, 'io> Enumerator<'prog, 'io> {
         output: &'io mut OutputWriter,
         args: &CliArgs,
     ) -> Enumerator<'prog, 'io> {
-        let solver: Box<dyn solver::common::PrimSolver> = match args.solver {
-            args::Solver::Z3 => Box::new(super::solver::smtlib::SmtLibSolver::new(
-                super::solver::smtlib::SolverBackend::Z3,
-            )),
-            args::Solver::CVC5 => Box::new(super::solver::smtlib::SmtLibSolver::new(
-                super::solver::smtlib::SolverBackend::CVC5,
-            )),
-            args::Solver::NoSmt => Box::new(super::solver::no_smt::NoSmtSolver::new()),
-        };
-
-        let config = ExecConfig::new(args);
+        let solver = interp::solver::common::new_solver(args);
+        let config = interp::config::ExecConfig::new(args);
 
         Enumerator {
             prog,

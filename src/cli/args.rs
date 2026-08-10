@@ -9,6 +9,14 @@ pub enum Solver {
 }
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
+pub enum IntRep {
+    Num,
+    BV8,
+    BV16,
+    BV32,
+}
+
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Heuristic {
     LeftBiased,
     Interleave,
@@ -30,6 +38,9 @@ pub struct CliArgs {
 
     #[arg(long, default_value = "no-smt", value_name = "SOLVER")]
     pub solver: Solver,
+
+    #[arg(long, default_value = "num", value_name = "INT_REP")]
+    pub int_rep: IntRep,
 
     #[arg(long, default_value = "hybrid", value_name = "HEURISTIC")]
     pub heuristic: Heuristic,
@@ -79,6 +90,7 @@ pub fn get_test_cli_args(prog_name: PathBuf) -> CliArgs {
     CliArgs {
         input: prog_name,
         solver: Solver::Z3,
+        int_rep: IntRep::Num,
         heuristic: Heuristic::Hybrid,
         strategy: Strategy::Generator,
         reduction: true,
@@ -104,6 +116,7 @@ pub fn get_bench_cli_args(
     CliArgs {
         input: prog_name,
         solver: Solver::Z3,
+        int_rep: IntRep::Num,
         heuristic,
         strategy: Strategy::Generator,
         reduction,

@@ -4,23 +4,34 @@ use super::*;
 use easy_smt::{Context, ContextBuilder, SExpr};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum SolverBackend {
+pub enum Solver {
     Z3,
     CVC5,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum IntRep {
+    Num,
+    BV8,
+    BV16,
+    BV32,
+}
+
+#[allow(dead_code)]
 pub struct SmtLibSolver {
     ctx: Context,
+    solver: Solver,
+    int_rep: IntRep,
 }
 
 impl SmtLibSolver {
-    pub fn new(backend: SolverBackend) -> Self {
+    pub fn new(solver: Solver, int_rep: IntRep) -> Self {
         let mut ctx_bld = ContextBuilder::new();
-        match backend {
-            SolverBackend::Z3 => {
+        match solver {
+            Solver::Z3 => {
                 ctx_bld.solver("z3").solver_args(["-smt2", "-in", "-v:0"]);
             }
-            SolverBackend::CVC5 => {
+            Solver::CVC5 => {
                 ctx_bld
                     .solver("cvc5")
                     .solver_args(["--quiet", "--lang=smt2", "--incremental"]);
@@ -29,12 +40,11 @@ impl SmtLibSolver {
 
         // ctx_bld.replay_file(Some(std::fs::File::create("replay.smt2").unwrap()));
         let mut ctx = ctx_bld.build().unwrap();
-        ctx.set_logic("QF_NIA").unwrap();
-        match backend {
-            SolverBackend::Z3 => {
+        match solver {
+            Solver::Z3 => {
                 ctx.set_option(":timeout", ctx.numeral(1000)).unwrap();
             }
-            SolverBackend::CVC5 => {
+            Solver::CVC5 => {
                 ctx.set_option(":tlimit-per", ctx.numeral(1000)).unwrap();
             }
         }
@@ -42,7 +52,11 @@ impl SmtLibSolver {
         // push an empty context for reset
         ctx.push().unwrap();
 
-        SmtLibSolver { ctx }
+        SmtLibSolver {
+            ctx,
+            solver,
+            int_rep,
+        }
     }
 
     fn declare_vars(&mut self, ty_map: &HashMap<IdentCtx, LitType>) -> HashMap<IdentCtx, SExpr> {
@@ -50,7 +64,12 @@ impl SmtLibSolver {
             .iter()
             .map(|(var, typ)| {
                 let sort = match typ {
-                    LitType::TyInt => self.ctx.int_sort(),
+                    LitType::TyInt => match self.int_rep {
+                        IntRep::Num => self.ctx.int_sort(),
+                        IntRep::BV8 => self.ctx.bit_vec_sort(self.ctx.numeral(8)),
+                        IntRep::BV16 => self.ctx.bit_vec_sort(self.ctx.numeral(16)),
+                        IntRep::BV32 => self.ctx.bit_vec_sort(self.ctx.numeral(32)),
+                    },
                     LitType::TyFloat => self.ctx.real_sort(),
                     LitType::TyBool => self.ctx.bool_sort(),
                     LitType::TyChar => todo!(),
@@ -79,30 +98,59 @@ impl SmtLibSolver {
                     Prim::IAdd | Prim::ISub | Prim::IMul | Prim::IDiv | Prim::IRem,
                     &[arg1, arg2, arg3],
                 ) => {
-                    let res = match prim {
-                        Prim::IAdd => self.ctx.plus(arg1, arg2),
-                        Prim::ISub => self.ctx.sub(arg1, arg2),
-                        Prim::IMul => self.ctx.times(arg1, arg2),
-                        Prim::IDiv => self.ctx.div(arg1, arg2),
-                        Prim::IRem => self.ctx.rem(arg1, arg2),
-                        _ => unreachable!(),
-                    };
-                    self.ctx.assert(self.ctx.eq(res, arg3)).unwrap();
+                    if self.int_rep == IntRep::Num {
+                        let res = match prim {
+                            Prim::IAdd => self.ctx.plus(arg1, arg2),
+                            Prim::ISub => self.ctx.sub(arg1, arg2),
+                            Prim::IMul => self.ctx.times(arg1, arg2),
+                            Prim::IDiv => self.ctx.div(arg1, arg2),
+                            Prim::IRem => self.ctx.rem(arg1, arg2),
+                            _ => unreachable!(),
+                        };
+                        self.ctx.assert(self.ctx.eq(res, arg3)).unwrap();
+                    } else {
+                        let res = match prim {
+                            Prim::IAdd => self.ctx.bvadd(arg1, arg2),
+                            Prim::ISub => self.ctx.bvsub(arg1, arg2),
+                            Prim::IMul => self.ctx.bvmul(arg1, arg2),
+                            Prim::IDiv => self.ctx.bvsdiv(arg1, arg2),
+                            Prim::IRem => self.ctx.bvsrem(arg1, arg2),
+                            _ => unreachable!(),
+                        };
+                        self.ctx.assert(self.ctx.eq(res, arg3)).unwrap();
+                    }
                 }
                 (Prim::INeg, &[arg1, arg2]) => {
-                    let res = self.ctx.negate(arg1);
-                    self.ctx.assert(self.ctx.eq(res, arg2)).unwrap();
+                    if self.int_rep == IntRep::Num {
+                        let res = self.ctx.negate(arg1);
+                        self.ctx.assert(self.ctx.eq(res, arg2)).unwrap();
+                    } else {
+                        let res = self.ctx.bvneg(arg1);
+                        self.ctx.assert(self.ctx.eq(res, arg2)).unwrap();
+                    }
                 }
                 (Prim::ICmp(cmp), &[arg1, arg2, arg3]) => {
-                    let res = match cmp {
-                        Compare::Lt => self.ctx.lt(arg1, arg2),
-                        Compare::Le => self.ctx.lte(arg1, arg2),
-                        Compare::Eq => self.ctx.eq(arg1, arg2),
-                        Compare::Ge => self.ctx.gte(arg1, arg2),
-                        Compare::Gt => self.ctx.gt(arg1, arg2),
-                        Compare::Ne => self.ctx.not(self.ctx.eq(arg1, arg2)),
-                    };
-                    self.ctx.assert(self.ctx.eq(res, arg3)).unwrap();
+                    if self.int_rep == IntRep::Num {
+                        let res = match cmp {
+                            Compare::Lt => self.ctx.lt(arg1, arg2),
+                            Compare::Le => self.ctx.lte(arg1, arg2),
+                            Compare::Eq => self.ctx.eq(arg1, arg2),
+                            Compare::Ge => self.ctx.gte(arg1, arg2),
+                            Compare::Gt => self.ctx.gt(arg1, arg2),
+                            Compare::Ne => self.ctx.not(self.ctx.eq(arg1, arg2)),
+                        };
+                        self.ctx.assert(self.ctx.eq(res, arg3)).unwrap();
+                    } else {
+                        let res = match cmp {
+                            Compare::Lt => self.ctx.bvslt(arg1, arg2),
+                            Compare::Le => self.ctx.bvsle(arg1, arg2),
+                            Compare::Eq => self.ctx.eq(arg1, arg2),
+                            Compare::Ge => self.ctx.bvsge(arg1, arg2),
+                            Compare::Gt => self.ctx.bvsgt(arg1, arg2),
+                            Compare::Ne => self.ctx.not(self.ctx.eq(arg1, arg2)),
+                        };
+                        self.ctx.assert(self.ctx.eq(res, arg3)).unwrap();
+                    }
                 }
                 (Prim::BAnd | Prim::BOr, &[arg1, arg2, arg3]) => {
                     let res = match prim {
@@ -126,7 +174,12 @@ impl SmtLibSolver {
     fn atom_to_sexp(&self, atom: &AtomVal<IdentCtx>, map: &HashMap<IdentCtx, SExpr>) -> SExpr {
         match atom {
             Term::Var(var) => map[var],
-            Term::Lit(LitVal::Int(x)) => self.ctx.numeral(*x),
+            Term::Lit(LitVal::Int(x)) => match self.int_rep {
+                IntRep::Num => self.ctx.numeral(*x),
+                IntRep::BV8 => self.ctx.binary(8, *x),
+                IntRep::BV16 => self.ctx.binary(16, *x),
+                IntRep::BV32 => self.ctx.binary(32, *x),
+            },
             Term::Lit(LitVal::Float(x)) => self.ctx.decimal(*x),
             Term::Lit(LitVal::Bool(x)) => {
                 if *x {
@@ -141,12 +194,31 @@ impl SmtLibSolver {
     }
 
     fn sexp_to_lit_val(&self, sexpr: SExpr) -> Option<LitVal> {
-        if let Some(res) = self.ctx.get_i32(sexpr) {
-            return Some(LitVal::Int(res));
+        // println!("sexpr: {}", self.ctx.display(sexpr));
+
+        match self.int_rep {
+            IntRep::Num => {
+                if let Some(res) = self.ctx.get_i32(sexpr) {
+                    return Some(LitVal::Int(res));
+                }
+            }
+            IntRep::BV8 => {
+                if let Some(res) = self.ctx.get_u8(sexpr) {
+                    return Some(LitVal::Int(res.cast_signed() as i32));
+                }
+            }
+            IntRep::BV16 => {
+                if let Some(res) = self.ctx.get_u16(sexpr) {
+                    return Some(LitVal::Int(res.cast_signed() as i32));
+                }
+            }
+            IntRep::BV32 => {
+                if let Some(res) = self.ctx.get_u32(sexpr) {
+                    return Some(LitVal::Int(res.cast_signed() as i32));
+                }
+            }
         }
-        if let Some(res) = self.ctx.get_f32(sexpr) {
-            return Some(LitVal::Float(res));
-        }
+
         if let Some(res) = self.ctx.get_atom(sexpr) {
             match res {
                 "true" => {
@@ -160,8 +232,6 @@ impl SmtLibSolver {
                 }
             }
         }
-
-        // todo: basic type `Char``
 
         None
     }
@@ -208,77 +278,10 @@ impl common::PrimSolver for SmtLibSolver {
 
     fn generate_sat(
         &mut self,
-        rng: &mut rngs::ThreadRng,
+        _rng: &mut rngs::ThreadRng,
         prims: &[(Prim, Vec<AtomVal<IdentCtx>>)],
     ) -> Option<HashMap<IdentCtx, LitVal>> {
-        // fast path for empty solver query
-        if prims.is_empty() {
-            return Some(HashMap::new());
-        }
-
-        // reset solver state
-        self.ctx.pop().unwrap();
-        self.ctx.push().unwrap();
-
-        let ty_map: HashMap<IdentCtx, LitType> = infer_type(prims);
-        let sexp_map = self.declare_vars(&ty_map);
-        self.add_constraints(&sexp_map, prims);
-
-        if self.ctx.check().unwrap() != easy_smt::Response::Sat {
-            return None;
-        }
-
-        let mut vars: Vec<IdentCtx> = ty_map.keys().copied().collect();
-        let mut count = 0;
-
-        while !vars.is_empty() && count < 10 {
-            let var = vars.remove(rng.random_range(0..vars.len()));
-            let value = match ty_map[&var] {
-                LitType::TyInt => self.ctx.numeral(rng.random::<i32>() as i64),
-                LitType::TyFloat => todo!(),
-                LitType::TyBool => {
-                    if rng.random_bool(0.5) {
-                        self.ctx.true_()
-                    } else {
-                        self.ctx.false_()
-                    }
-                }
-                LitType::TyChar => todo!(),
-            };
-            let res = self
-                .ctx
-                .check_assuming(vec![self.ctx.eq(sexp_map[&var], value)])
-                .unwrap();
-            if res == easy_smt::Response::Sat {
-                count = 0;
-                self.ctx.assert(self.ctx.eq(sexp_map[&var], value)).unwrap();
-                let check_res = self.ctx.check().unwrap();
-                if check_res != easy_smt::Response::Sat {
-                    return None;
-                }
-            } else {
-                count += 1;
-                vars.push(var);
-            }
-        }
-
-        let check_res = self.ctx.check().unwrap();
-        if check_res != easy_smt::Response::Sat {
-            return None;
-        }
-        let vars: Vec<IdentCtx> = ty_map.keys().copied().collect();
-        let res = vars
-            .iter()
-            .cloned()
-            .zip(
-                self.ctx
-                    .get_value(vars.iter().map(|var| sexp_map[var]).collect())
-                    .unwrap()
-                    .iter()
-                    .map(|(_var, val)| self.sexp_to_lit_val(*val).unwrap()),
-            )
-            .collect();
-
-        Some(res)
+        // todo: maybe some extra randomization?
+        self.check_sat(prims)
     }
 }

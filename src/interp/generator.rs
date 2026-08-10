@@ -4,12 +4,12 @@ use super::branch::*;
 use super::*;
 use crate::cli::args::{self, CliArgs};
 use crate::cli::pipeline::OutputWriter;
-use crate::interp::config::ExecConfig;
+use crate::interp;
 
 pub struct Generator<'prog, 'io> {
     prog: &'prog Program,
     output: &'io mut OutputWriter,
-    config: ExecConfig,
+    config: interp::config::ExecConfig,
     ansr_cnt: usize,
     rng: rngs::ThreadRng,
     solver: Box<dyn solver::common::PrimSolver>,
@@ -21,18 +21,8 @@ impl<'prog, 'io> Generator<'prog, 'io> {
         output: &'io mut OutputWriter,
         args: &CliArgs,
     ) -> Generator<'prog, 'io> {
-        let solver: Box<dyn solver::common::PrimSolver> = match args.solver {
-            args::Solver::Z3 => Box::new(super::solver::smtlib::SmtLibSolver::new(
-                super::solver::smtlib::SolverBackend::Z3,
-            )),
-            args::Solver::CVC5 => Box::new(super::solver::smtlib::SmtLibSolver::new(
-                super::solver::smtlib::SolverBackend::CVC5,
-            )),
-            args::Solver::NoSmt => Box::new(super::solver::no_smt::NoSmtSolver::new()),
-        };
-
-        let config = ExecConfig::new(args);
-
+        let solver = interp::solver::common::new_solver(args);
+        let config = interp::config::ExecConfig::new(args);
         Generator {
             prog,
             output,
@@ -84,7 +74,7 @@ impl<'prog, 'io> Generator<'prog, 'io> {
                 continue;
             }
 
-            if brch.calls.is_empty() {
+            if self.is_solved(&brch) {
                 if brch.depth < size.0 {
                     continue;
                 }
@@ -99,6 +89,18 @@ impl<'prog, 'io> Generator<'prog, 'io> {
                 }
             }
         }
+    }
+
+    fn is_solved(&self, brch: &Branch) -> bool {
+        if !brch.calls.is_empty() {
+            return false;
+        }
+        for ansr in &brch.ansrs {
+            if let Err((_, _)) = check_free_var(self.prog, &ansr.val, &ansr.ty) {
+                return false;
+            }
+        }
+        true
     }
 
     fn solve_answer(&mut self, brch: &Branch) -> bool {
@@ -139,23 +141,37 @@ impl<'prog, 'io> Generator<'prog, 'io> {
     }
 
     fn branch_split(&mut self, brch: &Branch) -> Vec<(Branch, Vec<(usize, usize)>)> {
-        let call_idx = match self.config.heuristic {
-            args::Heuristic::LeftBiased => brch.left_biased_strategy(),
-            args::Heuristic::Interleave => brch.interleave_strategy(),
-            args::Heuristic::SmallFirst => brch.small_first_strategy(),
-            args::Heuristic::Hybrid => brch.hybrid_strategy(),
-            args::Heuristic::Random => brch.random_strategy(&mut self.rng),
-        };
-        let mut res = Vec::new();
-        for &rule_idx in brch.calls[call_idx].looks.iter() {
-            if let Some((brch, path)) =
-                apply_rule_with_reduction(self.prog, brch, call_idx, rule_idx)
-            {
-                if self.solver.check_sat(&brch.prims).is_some() {
-                    res.push((brch, path));
+        if brch.calls.is_empty() {
+            // split by free variable
+            if let Some(brchs) = split_free_var(self.prog, brch) {
+                brchs
+                    .into_iter()
+                    .enumerate()
+                    .map(|(idx, brch)| (brch, vec![(0, idx)]))
+                    .collect()
+            } else {
+                panic!("this branch is already solved!!")
+            }
+        } else {
+            // split by predicate calls
+            let call_idx = match self.config.heuristic {
+                args::Heuristic::LeftBiased => brch.left_biased_strategy(),
+                args::Heuristic::Interleave => brch.interleave_strategy(),
+                args::Heuristic::SmallFirst => brch.small_first_strategy(),
+                args::Heuristic::Hybrid => brch.hybrid_strategy(),
+                args::Heuristic::Random => brch.random_strategy(&mut self.rng),
+            };
+            let mut res = Vec::new();
+            for &rule_idx in brch.calls[call_idx].looks.iter() {
+                if let Some((brch, path)) =
+                    apply_rule_with_reduction(self.prog, brch, call_idx, rule_idx)
+                {
+                    if self.solver.check_sat(&brch.prims).is_some() {
+                        res.push((brch, path));
+                    }
                 }
             }
+            res
         }
-        res
     }
 }
