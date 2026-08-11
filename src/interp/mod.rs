@@ -9,6 +9,7 @@ use rand::*;
 use std::collections::HashMap;
 
 pub mod branch;
+pub mod completer;
 pub mod config;
 pub mod enumerator;
 pub mod generator;

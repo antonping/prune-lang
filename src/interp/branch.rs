@@ -410,6 +410,46 @@ pub fn split_free_var(prog: &Program, brch: &Branch) -> Option<Vec<Branch>> {
     None
 }
 
+pub fn walk_free_var(
+    prog: &Program,
+    val: &TermVal<IdentCtx>,
+    ty: &TermType,
+    map: &mut HashMap<IdentCtx, TermType>,
+) {
+    match (val, ty) {
+        (Term::Var(var), ty) => {
+            map.insert(*var, ty.clone());
+        }
+        (Term::Lit(lit), Term::Lit(ty)) => {
+            assert_eq!(lit.get_typ(), *ty);
+        }
+        (
+            Term::Cons(OptCons::Some(val_cons), val_args),
+            Term::Cons(OptCons::Some(ty_cons), ty_args),
+        ) => {
+            let cons = &prog.conss[val_cons];
+            assert_eq!(cons.data_cons, *ty_cons);
+            let subst: HashMap<Ident, TermType> = cons
+                .polys
+                .iter()
+                .zip(ty_args.iter())
+                .map(|(poly, arg)| (*poly, arg.clone()))
+                .collect();
+            let ty_args: Vec<TermType> =
+                cons.pars.iter().map(|par| par.substitute(&subst)).collect();
+            for (val, ty) in val_args.iter().zip(ty_args.iter()) {
+                walk_free_var(prog, val, ty, map);
+            }
+        }
+        (Term::Cons(OptCons::None, val_args), Term::Cons(OptCons::None, ty_args)) => {
+            for (val, ty) in val_args.iter().zip(ty_args.iter()) {
+                walk_free_var(prog, val, ty, map);
+            }
+        }
+        _ => unreachable!(),
+    }
+}
+
 pub fn branch_init(prog: &Program, pred: Ident) -> Branch {
     // predicate for query can not be polymorphic!
     assert!(prog.preds[&pred].polys.is_empty());
