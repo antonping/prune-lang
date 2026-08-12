@@ -256,11 +256,11 @@ pub fn propagate_unify(
                 *arg = unifier.subst(&arg.to_term()).to_atom().unwrap();
             }
 
-            match super::progagate::propagate_prims(*prim, args) {
-                progagate::PropagateResult::Skip => {
+            match super::propagate::propagate_prims(*prim, args) {
+                propagate::PropagateResult::Skip => {
                     // skip, do nothing
                 }
-                progagate::PropagateResult::Propagate(subst) => {
+                propagate::PropagateResult::Propagate(subst) => {
                     for (lhs, rhs) in &subst {
                         let res = unifier.unify(&lhs.to_term(), &rhs.to_term());
                         if let Err(_err) = res {
@@ -272,7 +272,7 @@ pub fn propagate_unify(
                         dirty_flag = true;
                     }
                 }
-                progagate::PropagateResult::Conflit => return false,
+                propagate::PropagateResult::Conflit => return false,
             }
         }
     }

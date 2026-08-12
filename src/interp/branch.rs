@@ -283,7 +283,7 @@ pub fn apply_rule(
         new_brch.prims.push((*prim, args.clone()));
     }
 
-    if !super::progagate::propagate_unify(&mut new_brch.prims, &mut unifier) {
+    if !super::propagate::propagate_unify(&mut new_brch.prims, &mut unifier) {
         return None;
     }
 

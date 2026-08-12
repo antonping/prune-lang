@@ -12,5 +12,5 @@ pub mod branch;
 pub mod completer;
 pub mod config;
 pub mod generator;
-pub mod progagate;
+pub mod propagate;
 pub mod solver;
