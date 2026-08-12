@@ -126,21 +126,10 @@ impl<'a> Pipeline<'a> {
         writeln!(output.prog, "{prog}").unwrap();
 
         let mut res_vec = Vec::new();
-        match self.args.strategy {
-            args::Strategy::Generator => {
-                let mut runner = interp::generator::Generator::new(prog, &mut output, self.args);
-                for query_decl in &prog.querys {
-                    let res = runner.run_loop(query_decl);
-                    res_vec.push(res);
-                }
-            }
-            args::Strategy::Enumerator => {
-                let mut runner = interp::enumerator::Enumerator::new(prog, &mut output, self.args);
-                for query_decl in &prog.querys {
-                    let res = runner.run_loop(query_decl);
-                    res_vec.push(res);
-                }
-            }
+        let mut runner = interp::generator::Generator::new(prog, &mut output, self.args);
+        for query_decl in &prog.querys {
+            let res = runner.run_loop(query_decl);
+            res_vec.push(res);
         }
         Ok(res_vec)
     }

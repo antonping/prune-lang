@@ -11,8 +11,6 @@ use std::collections::HashMap;
 pub mod branch;
 pub mod completer;
 pub mod config;
-pub mod enumerator;
 pub mod generator;
-pub mod path;
 pub mod progagate;
 pub mod solver;

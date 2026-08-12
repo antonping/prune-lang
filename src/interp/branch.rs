@@ -321,95 +321,6 @@ pub fn apply_rule(
     Some(new_brch)
 }
 
-pub fn check_free_var(
-    prog: &Program,
-    val: &TermVal<IdentCtx>,
-    ty: &TermType,
-) -> Result<(), (IdentCtx, TermType)> {
-    match (val, ty) {
-        (Term::Var(_), Term::Lit(_)) => {
-            Ok(()) // ignore variables with literal type
-        }
-        (Term::Var(var), ty) => Err((*var, ty.clone())),
-        (Term::Lit(_), _ty) => Ok(()),
-        (
-            Term::Cons(OptCons::Some(val_cons), val_args),
-            Term::Cons(OptCons::Some(ty_cons), ty_args),
-        ) => {
-            let cons = &prog.conss[val_cons];
-            assert_eq!(cons.data_cons, *ty_cons);
-            let subst: HashMap<Ident, TermType> = cons
-                .polys
-                .iter()
-                .zip(ty_args.iter())
-                .map(|(poly, arg)| (*poly, arg.clone()))
-                .collect();
-            let ty_args: Vec<TermType> =
-                cons.pars.iter().map(|par| par.substitute(&subst)).collect();
-            for (val, ty) in val_args.iter().zip(ty_args.iter()) {
-                check_free_var(prog, val, ty)?;
-            }
-            Ok(())
-        }
-        (Term::Cons(OptCons::None, val_args), Term::Cons(OptCons::None, ty_args)) => {
-            for (val, ty) in val_args.iter().zip(ty_args.iter()) {
-                check_free_var(prog, val, ty)?;
-            }
-            Ok(())
-        }
-        _ => unreachable!(),
-    }
-}
-
-pub fn split_free_var(prog: &Program, brch: &Branch) -> Option<Vec<Branch>> {
-    for ansr in &brch.ansrs {
-        if let Err((var, ty)) = check_free_var(prog, &ansr.val, &ansr.ty) {
-            match ty {
-                Term::Lit(_) => unreachable!(),
-                Term::Var(_) => {
-                    panic!("type variable at runtime!")
-                }
-                Term::Cons(OptCons::Some(ty_cons), _args) => {
-                    let mut brchs = Vec::new();
-                    for cons in &prog.datas[&ty_cons].conss {
-                        let cons_val: TermVal<IdentCtx> = Term::Cons(
-                            OptCons::Some(*cons),
-                            prog.conss[&cons]
-                                .pars
-                                .iter()
-                                .map(|_| Term::Var(Ident::fresh(&"_").tag_ctx(brch.depth)))
-                                .collect(),
-                        );
-                        let mut new_brch = brch.clone();
-                        new_brch.depth += 1;
-                        let mut unifier = Unifier::new();
-                        unifier.unify(&Term::Var(var), &cons_val).unwrap();
-                        new_brch.merge(unifier);
-                        brchs.push(new_brch);
-                    }
-                    return Some(brchs);
-                }
-                Term::Cons(OptCons::None, args) => {
-                    let args = args
-                        .iter()
-                        .map(|_| Term::Var(Ident::fresh(&"_").tag_ctx(brch.depth)))
-                        .collect();
-                    let mut new_brch = brch.clone();
-                    new_brch.depth += 1;
-                    let mut unifier: Unifier<IdentCtx, _, _> = Unifier::new();
-                    unifier
-                        .unify(&Term::Var(var), &Term::Cons(OptCons::None, args))
-                        .unwrap();
-                    new_brch.merge(unifier);
-                    return Some(vec![new_brch]);
-                }
-            }
-        }
-    }
-
-    None
-}
-
 pub fn walk_free_var(
     prog: &Program,
     val: &TermVal<IdentCtx>,
@@ -484,18 +395,4 @@ pub fn branch_init(prog: &Program, pred: Ident) -> Branch {
     };
 
     brch
-}
-
-pub fn branch_step(prog: &Program, brch: &Branch, call_idx: usize, rule_idx: usize) -> Branch {
-    if brch.calls.is_empty() {
-        // free variable split
-        assert_eq!(call_idx, 0);
-        if let Some(brchs) = split_free_var(prog, brch) {
-            brchs.into_iter().nth(rule_idx).unwrap()
-        } else {
-            panic!("this branch is already solved!!")
-        }
-    } else {
-        apply_rule(prog, brch, call_idx, rule_idx).unwrap()
-    }
 }

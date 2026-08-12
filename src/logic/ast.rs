@@ -152,38 +152,31 @@ impl<V: fmt::Display> fmt::Display for Rule<V> {
     }
 }
 
-impl fmt::Display for DataDecl {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.polys.is_empty() {
-            writeln!(
-                f,
-                "datatype {}[{}] where",
-                self.name,
-                self.polys.iter().format(", ")
-            )?;
-        } else {
-            writeln!(f, "datatype {} where", self.name)?;
-        }
-
-        for cons in &self.conss {
-            write!(f, "{cons}")?;
-        }
-
-        writeln!(f, "end")?;
-        Ok(())
-    }
-}
-
-impl fmt::Display for ConsDecl {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "| {}({})", self.name, self.pars.iter().format(", "))
-    }
-}
-
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for data_decl in self.datas.values() {
-            writeln!(f, "{data_decl}")?;
+            if data_decl.polys.is_empty() {
+                writeln!(
+                    f,
+                    "datatype {}[{}] where",
+                    data_decl.name,
+                    data_decl.polys.iter().format(", ")
+                )?;
+            } else {
+                writeln!(f, "datatype {} where", data_decl.name)?;
+            }
+
+            for cons in &data_decl.conss {
+                let cons_decl = &self.conss[cons];
+                writeln!(
+                    f,
+                    "| {}({})",
+                    data_decl.name,
+                    cons_decl.pars.iter().format(", ")
+                )?
+            }
+
+            writeln!(f, "end")?;
         }
 
         for pred_decl in self.preds.values() {

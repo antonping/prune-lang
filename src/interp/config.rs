@@ -8,7 +8,6 @@ pub struct ExecConfig {
     pub mem_limit: usize,
     pub solver: args::Solver,
     pub heuristic: args::Heuristic,
-    pub strategy: args::Strategy,
     pub debug_mode: bool,
     pub start_time: std::time::Instant,
 }
@@ -21,7 +20,6 @@ impl ExecConfig {
             mem_limit: args.mem_limit,
             solver: args.solver,
             heuristic: args.heuristic,
-            strategy: args.strategy,
             debug_mode: args.debug_mode,
             start_time: std::time::Instant::now(),
         }
