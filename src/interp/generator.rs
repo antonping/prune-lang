@@ -106,7 +106,7 @@ impl<'prog, 'io> Generator<'prog, 'io> {
             } else {
                 let mut brchs = self.branch_split(&brch);
                 brchs.shuffle(&mut self.rng);
-                for (brch, _) in brchs {
+                for brch in brchs {
                     stack.push(brch);
                 }
             }
@@ -136,7 +136,7 @@ impl<'prog, 'io> Generator<'prog, 'io> {
         }
     }
 
-    fn branch_split(&mut self, brch: &Branch) -> Vec<(Branch, Vec<(usize, usize)>)> {
+    fn branch_split(&mut self, brch: &Branch) -> Vec<Branch> {
         let call_idx = match self.config.heuristic {
             args::Heuristic::LeftBiased => brch.left_biased_strategy(),
             args::Heuristic::Interleave => brch.interleave_strategy(),
@@ -146,11 +146,9 @@ impl<'prog, 'io> Generator<'prog, 'io> {
         };
         let mut res = Vec::new();
         for &rule_idx in brch.calls[call_idx].looks.iter() {
-            if let Some((brch, path)) =
-                apply_rule_with_reduction(self.prog, brch, call_idx, rule_idx)
-            {
+            if let Some(brch) = apply_rule(self.prog, brch, call_idx, rule_idx) {
                 if self.solver.check_sat(&brch.prims).is_some() {
-                    res.push((brch, path));
+                    res.push(brch);
                 }
             }
         }

@@ -19,33 +19,28 @@ fn run_benchmark(c: &mut Criterion, name: &str, depth_limits: &[usize]) {
     group.sample_size(10);
 
     for heuristic in HEURISTICS.iter() {
-        for reduction in [false, true] {
-            for depth_limit in depth_limits.iter() {
-                let start = Instant::now();
-                group.bench_with_input(
-                    BenchmarkId::new(
-                        format!("{}({:?}, {})", name, heuristic, reduction),
-                        depth_limit,
-                    ),
-                    depth_limit,
-                    |b, depth_limit| {
-                        b.iter(|| {
-                            cli::pipeline::run_bench_pipeline(
-                                PathBuf::from(format!("./benches/{name}.pr")),
-                                *heuristic,
-                                reduction,
-                                *depth_limit,
-                            )
-                            .unwrap()
-                        })
-                    },
-                );
-                if start.elapsed().as_secs() > TIMEOUT {
-                    break; // remaining tests will cost too much time!
-                }
+        for depth_limit in depth_limits.iter() {
+            let start = Instant::now();
+            group.bench_with_input(
+                BenchmarkId::new(format!("{}({:?})", name, heuristic), depth_limit),
+                depth_limit,
+                |b, depth_limit| {
+                    b.iter(|| {
+                        cli::pipeline::run_bench_pipeline(
+                            PathBuf::from(format!("./benches/{name}.pr")),
+                            *heuristic,
+                            *depth_limit,
+                        )
+                        .unwrap()
+                    })
+                },
+            );
+            if start.elapsed().as_secs() > TIMEOUT {
+                break; // remaining tests will cost too much time!
             }
         }
     }
+
     group.finish();
 }
 

@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove IDDFS search algorithm and related parameters.
 - Remove deprecated look-ahead branching heuristic.
+- Remove deprecated reduction flag parameter.
 
 ## [0.2.4] - 2026-07-17
 

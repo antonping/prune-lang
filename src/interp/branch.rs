@@ -121,12 +121,18 @@ impl Branch {
     }
 
     pub fn interleave_strategy(&self) -> usize {
+        if let Some(idx) = self.check_reduction() {
+            return idx;
+        }
         (0..self.calls.len())
             .min_by_key(|idx| self.calls[*idx].depth)
             .unwrap()
     }
 
     pub fn small_first_strategy(&self) -> usize {
+        if let Some(idx) = self.check_reduction() {
+            return idx;
+        }
         (0..self.calls.len())
             .min_by_key(|idx| {
                 let call = &self.calls[*idx];
@@ -136,6 +142,9 @@ impl Branch {
     }
 
     pub fn hybrid_strategy(&self) -> usize {
+        if let Some(idx) = self.check_reduction() {
+            return idx;
+        }
         (0..self.calls.len())
             .min_by_key(|idx| {
                 let call = &self.calls[*idx];
@@ -227,33 +236,6 @@ pub fn bit_list_to_uint(term: &TermVal<IdentCtx>) -> u64 {
         }
         _ => panic!("invalid bit list!"),
     }
-}
-
-pub fn apply_rule_with_reduction(
-    prog: &Program,
-    brch: &Branch,
-    call_idx: usize,
-    rule_idx: usize,
-) -> Option<(Branch, Vec<(usize, usize)>)> {
-    const MAX_REDUCTION: usize = 10;
-    let mut brch = apply_rule(prog, brch, call_idx, rule_idx)?;
-    let mut path = vec![(call_idx, rule_idx)];
-    for _ in 1..MAX_REDUCTION {
-        if let Some(call_idx) = brch.check_reduction() {
-            let looks = &brch.calls[call_idx].looks;
-            assert!(looks.len() <= 1);
-            if looks.is_empty() {
-                return None;
-            } else {
-                let rule_idx = brch.calls[call_idx].looks[0];
-                brch = apply_rule(prog, &brch, call_idx, rule_idx)?;
-                path.push((call_idx, rule_idx));
-            }
-        } else {
-            return Some((brch, path));
-        }
-    }
-    Some((brch, path))
 }
 
 pub fn apply_rule(

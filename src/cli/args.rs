@@ -39,9 +39,6 @@ pub struct CliArgs {
     #[arg(long, default_value = "hybrid", value_name = "HEURISTIC")]
     pub heuristic: Heuristic,
 
-    #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
-    pub reduction: bool,
-
     #[arg(long, default_value_t = usize::MAX, value_name = "INT")]
     pub answer_limit: usize,
 
@@ -83,7 +80,6 @@ pub fn get_test_cli_args(prog_name: PathBuf) -> CliArgs {
         solver: Solver::Z3,
         int_rep: IntRep::Num,
         heuristic: Heuristic::Hybrid,
-        reduction: true,
         answer_limit: usize::MAX,
         time_limit: usize::MAX,
         mem_limit: usize::MAX,
@@ -100,7 +96,6 @@ pub fn get_test_cli_args(prog_name: PathBuf) -> CliArgs {
 pub fn get_bench_cli_args(
     prog_name: PathBuf,
     heuristic: Heuristic,
-    reduction: bool,
     answer_limit: usize,
 ) -> CliArgs {
     CliArgs {
@@ -108,7 +103,6 @@ pub fn get_bench_cli_args(
         solver: Solver::Z3,
         int_rep: IntRep::Num,
         heuristic,
-        reduction,
         answer_limit,
         time_limit: usize::MAX,
         mem_limit: usize::MAX,
