@@ -2,6 +2,7 @@ use super::common::*;
 use super::*;
 
 use easy_smt::{Context, ContextBuilder, SExpr};
+use rand::seq::SliceRandom;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Solver {
@@ -40,17 +41,7 @@ impl SmtLibSolver {
 
         // ctx_bld.replay_file(Some(std::fs::File::create("replay.smt2").unwrap()));
         let mut ctx = ctx_bld.build().unwrap();
-        match solver {
-            Solver::Z3 => {
-                ctx.set_option(":timeout", ctx.numeral(1000)).unwrap();
-            }
-            Solver::CVC5 => {
-                ctx.set_option(":tlimit-per", ctx.numeral(1000)).unwrap();
-            }
-        }
-
-        // push an empty context for reset
-        ctx.push().unwrap();
+        ctx.push().unwrap(); // push an empty context for reset
 
         SmtLibSolver {
             ctx,
@@ -176,8 +167,8 @@ impl SmtLibSolver {
             Term::Var(var) => map[var],
             Term::Lit(LitVal::Int(x)) => match self.int_rep {
                 IntRep::Num => self.ctx.numeral(*x),
-                IntRep::BV8 => self.ctx.binary(8, *x),
-                IntRep::BV16 => self.ctx.binary(16, *x),
+                IntRep::BV8 => self.ctx.binary(8, i8::try_from(*x).unwrap()),
+                IntRep::BV16 => self.ctx.binary(16, i16::try_from(*x).unwrap()),
                 IntRep::BV32 => self.ctx.binary(32, *x),
             },
             Term::Lit(LitVal::Float(x)) => self.ctx.decimal(*x),
@@ -238,13 +229,10 @@ impl SmtLibSolver {
 }
 
 impl common::PrimSolver for SmtLibSolver {
-    fn check_sat(
-        &mut self,
-        prims: &[(Prim, Vec<AtomVal<IdentCtx>>)],
-    ) -> Option<HashMap<IdentCtx, LitVal>> {
+    fn check_sat(&mut self, prims: &[(Prim, Vec<AtomVal<IdentCtx>>)]) -> bool {
         // fast path for empty solver query
         if prims.is_empty() {
-            return Some(HashMap::new());
+            return true;
         }
 
         // reset solver state
@@ -255,8 +243,34 @@ impl common::PrimSolver for SmtLibSolver {
         let sexp_map = self.declare_vars(&ty_map);
         self.add_constraints(&sexp_map, prims);
 
-        let check_res = self.ctx.check().unwrap();
-        if check_res == easy_smt::Response::Sat {
+        let res = self.ctx.check().unwrap();
+        match res {
+            easy_smt::Response::Sat => true,
+            easy_smt::Response::Unsat => false,
+            easy_smt::Response::Unknown => panic!("SMT solver returns `Unknown`!"),
+        }
+    }
+
+    fn generate_model(
+        &mut self,
+        rng: &mut rngs::ThreadRng,
+        prims: &[(Prim, Vec<AtomVal<IdentCtx>>)],
+    ) -> HashMap<IdentCtx, LitVal> {
+        // fast path for empty solver query
+        if prims.is_empty() {
+            return HashMap::new();
+        }
+
+        // reset solver state
+        self.ctx.pop().unwrap();
+        self.ctx.push().unwrap();
+
+        let ty_map: HashMap<IdentCtx, LitType> = infer_type(prims);
+        let sexp_map = self.declare_vars(&ty_map);
+        self.add_constraints(&sexp_map, prims);
+        assert_eq!(self.ctx.check().unwrap(), easy_smt::Response::Sat);
+
+        if self.int_rep == IntRep::Num {
             let vars: Vec<IdentCtx> = ty_map.keys().copied().collect();
             let res = vars
                 .iter()
@@ -270,18 +284,82 @@ impl common::PrimSolver for SmtLibSolver {
                 )
                 .collect();
 
-            Some(res)
-        } else {
-            None
+            return res;
         }
-    }
 
-    fn generate_sat(
-        &mut self,
-        _rng: &mut rngs::ThreadRng,
-        prims: &[(Prim, Vec<AtomVal<IdentCtx>>)],
-    ) -> Option<HashMap<IdentCtx, LitVal>> {
-        // todo: maybe some extra randomization?
-        self.check_sat(prims)
+        let mut bits_pool: Vec<(IdentCtx, Option<i32>)> = Vec::new();
+        for (var, ty) in ty_map.iter() {
+            match ty {
+                LitType::TyInt => {
+                    let width: i32 = match self.int_rep {
+                        IntRep::Num => unreachable!(),
+                        IntRep::BV8 => 8,
+                        IntRep::BV16 => 16,
+                        IntRep::BV32 => 32,
+                    };
+                    for i in 0..width {
+                        bits_pool.push((*var, Some(i)));
+                    }
+                }
+                LitType::TyFloat => todo!(),
+                LitType::TyBool => {
+                    bits_pool.push((*var, None));
+                }
+                LitType::TyChar => todo!(),
+            }
+        }
+        bits_pool.shuffle(rng);
+
+        while !bits_pool.is_empty() {
+            let (var, idx) = bits_pool.pop().unwrap();
+            let (eq0, eq1) = match idx {
+                Some(idx) => (
+                    self.ctx.eq(
+                        self.ctx.extract(idx, idx, sexp_map[&var]),
+                        self.ctx.binary(1, 0),
+                    ),
+                    self.ctx.eq(
+                        self.ctx.extract(idx, idx, sexp_map[&var]),
+                        self.ctx.binary(1, 1),
+                    ),
+                ),
+                None => (
+                    self.ctx.eq(sexp_map[&var], self.ctx.false_()),
+                    self.ctx.eq(sexp_map[&var], self.ctx.true_()),
+                ),
+            };
+
+            let (eq_try, eq_backup) = if rng.random_bool(0.5) {
+                (eq0, eq1)
+            } else {
+                (eq1, eq0)
+            };
+
+            let res = self.ctx.check_assuming(vec![eq_try]).unwrap();
+            match res {
+                easy_smt::Response::Sat => {
+                    self.ctx.assert(eq_try).unwrap();
+                    assert_eq!(self.ctx.check().unwrap(), easy_smt::Response::Sat);
+                }
+                easy_smt::Response::Unsat => {
+                    self.ctx.assert(eq_backup).unwrap();
+                    assert_eq!(self.ctx.check().unwrap(), easy_smt::Response::Sat);
+                }
+                easy_smt::Response::Unknown => panic!("SMT solver returns `Unknown`!"),
+            }
+        }
+
+        assert_eq!(self.ctx.check().unwrap(), easy_smt::Response::Sat);
+        let vars: Vec<IdentCtx> = ty_map.keys().copied().collect();
+        vars.iter()
+            .cloned()
+            .zip(
+                self.ctx
+                    .get_value(vars.iter().map(|var| sexp_map[var]).collect())
+                    .unwrap()
+                    .iter()
+                    .map(|(_var, val)| self.sexp_to_lit_val(*val).unwrap()),
+            )
+            .collect()
     }
 }

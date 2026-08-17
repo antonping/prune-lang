@@ -3,16 +3,13 @@ use crate::cli::args;
 use super::*;
 
 pub trait PrimSolver {
-    fn check_sat(
-        &mut self,
-        prims: &[(Prim, Vec<AtomVal<IdentCtx>>)],
-    ) -> Option<HashMap<IdentCtx, LitVal>>;
+    fn check_sat(&mut self, prims: &[(Prim, Vec<AtomVal<IdentCtx>>)]) -> bool;
 
-    fn generate_sat(
+    fn generate_model(
         &mut self,
         rng: &mut rngs::ThreadRng,
         prims: &[(Prim, Vec<AtomVal<IdentCtx>>)],
-    ) -> Option<HashMap<IdentCtx, LitVal>>;
+    ) -> HashMap<IdentCtx, LitVal>;
 }
 
 pub fn infer_type(prims: &[(Prim, Vec<AtomVal<IdentCtx>>)]) -> HashMap<IdentCtx, LitType> {

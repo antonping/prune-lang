@@ -134,15 +134,15 @@ impl<'prog, 'io> Generator<'prog, 'io> {
                 if brch.depth < size_low {
                     continue;
                 }
-                if let Some(smt_time) = self.solve_smt_constraints(&mut brch) {
-                    self.ansr_cnt += 1;
-                    interp::completer::answer_complete(self.prog, &mut self.rng, &mut brch.ansrs);
-                    return GenResult::Success {
-                        brch,
-                        br_time: time,
-                        smt_time,
-                    };
-                }
+                assert!(self.solver.check_sat(&brch.prims));
+                let smt_time = self.solve_smt_constraints(&mut brch);
+                self.ansr_cnt += 1;
+                interp::completer::answer_complete(self.prog, &mut self.rng, &mut brch.ansrs);
+                return GenResult::Success {
+                    brch,
+                    br_time: time,
+                    smt_time,
+                };
             } else {
                 let mut brchs = self.branch_split(&brch);
                 brchs.shuffle(&mut self.rng);
@@ -156,21 +156,18 @@ impl<'prog, 'io> Generator<'prog, 'io> {
         return GenResult::Exhausted { time };
     }
 
-    fn solve_smt_constraints(&mut self, brch: &mut Branch) -> Option<usize> {
+    fn solve_smt_constraints(&mut self, brch: &mut Branch) -> usize {
         let smt_start = std::time::Instant::now();
-        if let Some(map) = self.solver.generate_sat(&mut self.rng, &brch.prims) {
-            let smt_time = smt_start.elapsed().as_millis() as usize;
-            let map = map
-                .into_iter()
-                .map(|(var, lit)| (var, Term::Lit(lit)))
-                .collect();
-            for ansr in brch.ansrs.iter_mut() {
-                ansr.val = ansr.val.substitute(&map);
-            }
-            Some(smt_time)
-        } else {
-            None
+        let map = self.solver.generate_model(&mut self.rng, &brch.prims);
+        let smt_time = smt_start.elapsed().as_millis() as usize;
+        let map = map
+            .into_iter()
+            .map(|(var, lit)| (var, Term::Lit(lit)))
+            .collect();
+        for ansr in brch.ansrs.iter_mut() {
+            ansr.val = ansr.val.substitute(&map);
         }
+        smt_time
     }
 
     fn branch_split(&mut self, brch: &Branch) -> Vec<Branch> {
@@ -184,7 +181,7 @@ impl<'prog, 'io> Generator<'prog, 'io> {
         let mut res = Vec::new();
         for &rule_idx in brch.calls[call_idx].looks.iter() {
             if let Some(brch) = apply_rule(self.prog, brch, call_idx, rule_idx) {
-                if self.solver.check_sat(&brch.prims).is_some() {
+                if self.solver.check_sat(&brch.prims) {
                     res.push(brch);
                 }
             }

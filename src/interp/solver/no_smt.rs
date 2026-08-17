@@ -15,24 +15,21 @@ impl Default for NoSmtSolver {
 }
 
 impl common::PrimSolver for NoSmtSolver {
-    fn check_sat(
-        &mut self,
-        prims: &[(Prim, Vec<AtomVal<IdentCtx>>)],
-    ) -> Option<HashMap<IdentCtx, LitVal>> {
+    fn check_sat(&mut self, prims: &[(Prim, Vec<AtomVal<IdentCtx>>)]) -> bool {
         if prims.is_empty() {
-            Some(HashMap::new())
+            true
         } else {
             panic!("no solver for unsolved primitives!")
         }
     }
 
-    fn generate_sat(
+    fn generate_model(
         &mut self,
         _rng: &mut rngs::ThreadRng,
         prims: &[(Prim, Vec<AtomVal<IdentCtx>>)],
-    ) -> Option<HashMap<IdentCtx, LitVal>> {
+    ) -> HashMap<IdentCtx, LitVal> {
         if prims.is_empty() {
-            Some(HashMap::new())
+            HashMap::new()
         } else {
             panic!("no solver for unsolved primitives!")
         }

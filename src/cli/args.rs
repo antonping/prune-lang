@@ -78,7 +78,7 @@ pub fn get_test_cli_args(prog_name: PathBuf) -> CliArgs {
     CliArgs {
         input: prog_name,
         solver: Solver::Z3,
-        int_rep: IntRep::Num,
+        int_rep: IntRep::BV16,
         heuristic: Heuristic::Hybrid,
         answer_limit: usize::MAX,
         time_limit: usize::MAX,
