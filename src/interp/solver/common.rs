@@ -43,15 +43,10 @@ pub fn new_solver(args: &args::CliArgs) -> Box<dyn PrimSolver> {
         args::Solver::NoSmt => None,
     };
 
-    let int_rep = match args.int_rep {
-        args::IntRep::Num => super::solver::smtlib::IntRep::Num,
-        args::IntRep::BV8 => super::solver::smtlib::IntRep::BV8,
-        args::IntRep::BV16 => super::solver::smtlib::IntRep::BV16,
-        args::IntRep::BV32 => super::solver::smtlib::IntRep::BV32,
-    };
+    let int_width = args.int_rep.get_width();
 
     let solver: Box<dyn solver::common::PrimSolver> = match solver {
-        Some(solver) => Box::new(super::solver::smtlib::SmtLibSolver::new(solver, int_rep)),
+        Some(solver) => Box::new(super::solver::smtlib::SmtLibSolver::new(solver, int_width)),
         None => Box::new(super::solver::no_smt::NoSmtSolver::new()),
     };
 

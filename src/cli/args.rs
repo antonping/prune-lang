@@ -10,10 +10,19 @@ pub enum Solver {
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 pub enum IntRep {
-    Num,
     BV8,
     BV16,
     BV32,
+}
+
+impl IntRep {
+    pub fn get_width(&self) -> usize {
+        match self {
+            IntRep::BV8 => 8,
+            IntRep::BV16 => 16,
+            IntRep::BV32 => 32,
+        }
+    }
 }
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -33,7 +42,7 @@ pub struct CliArgs {
     #[arg(long, default_value = "no-smt", value_name = "SOLVER")]
     pub solver: Solver,
 
-    #[arg(long, default_value = "num", value_name = "INT_REP")]
+    #[arg(long, default_value = "bv16", value_name = "INT_REP")]
     pub int_rep: IntRep,
 
     #[arg(long, default_value = "hybrid", value_name = "HEURISTIC")]
@@ -101,7 +110,7 @@ pub fn get_bench_cli_args(
     CliArgs {
         input: prog_name,
         solver: Solver::Z3,
-        int_rep: IntRep::Num,
+        int_rep: IntRep::BV16,
         heuristic,
         answer_limit,
         time_limit: usize::MAX,

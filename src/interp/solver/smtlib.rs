@@ -10,23 +10,15 @@ pub enum Solver {
     CVC5,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum IntRep {
-    Num,
-    BV8,
-    BV16,
-    BV32,
-}
-
 #[allow(dead_code)]
 pub struct SmtLibSolver {
     ctx: Context,
     solver: Solver,
-    int_rep: IntRep,
+    int_width: usize,
 }
 
 impl SmtLibSolver {
-    pub fn new(solver: Solver, int_rep: IntRep) -> Self {
+    pub fn new(solver: Solver, int_width: usize) -> Self {
         let mut ctx_bld = ContextBuilder::new();
         match solver {
             Solver::Z3 => {
@@ -43,10 +35,11 @@ impl SmtLibSolver {
         let mut ctx = ctx_bld.build().unwrap();
         ctx.push().unwrap(); // push an empty context for reset
 
+        assert!(vec![8, 16, 32].contains(&int_width));
         SmtLibSolver {
             ctx,
             solver,
-            int_rep,
+            int_width,
         }
     }
 
@@ -55,12 +48,7 @@ impl SmtLibSolver {
             .iter()
             .map(|(var, typ)| {
                 let sort = match typ {
-                    LitType::TyInt => match self.int_rep {
-                        IntRep::Num => self.ctx.int_sort(),
-                        IntRep::BV8 => self.ctx.bit_vec_sort(self.ctx.numeral(8)),
-                        IntRep::BV16 => self.ctx.bit_vec_sort(self.ctx.numeral(16)),
-                        IntRep::BV32 => self.ctx.bit_vec_sort(self.ctx.numeral(32)),
-                    },
+                    LitType::TyInt => self.ctx.bit_vec_sort(self.ctx.numeral(self.int_width)),
                     LitType::TyFloat => self.ctx.real_sort(),
                     LitType::TyBool => self.ctx.bool_sort(),
                     LitType::TyChar => todo!(),
@@ -89,59 +77,30 @@ impl SmtLibSolver {
                     Prim::IAdd | Prim::ISub | Prim::IMul | Prim::IDiv | Prim::IRem,
                     &[arg1, arg2, arg3],
                 ) => {
-                    if self.int_rep == IntRep::Num {
-                        let res = match prim {
-                            Prim::IAdd => self.ctx.plus(arg1, arg2),
-                            Prim::ISub => self.ctx.sub(arg1, arg2),
-                            Prim::IMul => self.ctx.times(arg1, arg2),
-                            Prim::IDiv => self.ctx.div(arg1, arg2),
-                            Prim::IRem => self.ctx.rem(arg1, arg2),
-                            _ => unreachable!(),
-                        };
-                        self.ctx.assert(self.ctx.eq(res, arg3)).unwrap();
-                    } else {
-                        let res = match prim {
-                            Prim::IAdd => self.ctx.bvadd(arg1, arg2),
-                            Prim::ISub => self.ctx.bvsub(arg1, arg2),
-                            Prim::IMul => self.ctx.bvmul(arg1, arg2),
-                            Prim::IDiv => self.ctx.bvsdiv(arg1, arg2),
-                            Prim::IRem => self.ctx.bvsrem(arg1, arg2),
-                            _ => unreachable!(),
-                        };
-                        self.ctx.assert(self.ctx.eq(res, arg3)).unwrap();
-                    }
+                    let res = match prim {
+                        Prim::IAdd => self.ctx.bvadd(arg1, arg2),
+                        Prim::ISub => self.ctx.bvsub(arg1, arg2),
+                        Prim::IMul => self.ctx.bvmul(arg1, arg2),
+                        Prim::IDiv => self.ctx.bvsdiv(arg1, arg2),
+                        Prim::IRem => self.ctx.bvsrem(arg1, arg2),
+                        _ => unreachable!(),
+                    };
+                    self.ctx.assert(self.ctx.eq(res, arg3)).unwrap();
                 }
                 (Prim::INeg, &[arg1, arg2]) => {
-                    if self.int_rep == IntRep::Num {
-                        let res = self.ctx.negate(arg1);
-                        self.ctx.assert(self.ctx.eq(res, arg2)).unwrap();
-                    } else {
-                        let res = self.ctx.bvneg(arg1);
-                        self.ctx.assert(self.ctx.eq(res, arg2)).unwrap();
-                    }
+                    let res = self.ctx.bvneg(arg1);
+                    self.ctx.assert(self.ctx.eq(res, arg2)).unwrap();
                 }
                 (Prim::ICmp(cmp), &[arg1, arg2, arg3]) => {
-                    if self.int_rep == IntRep::Num {
-                        let res = match cmp {
-                            Compare::Lt => self.ctx.lt(arg1, arg2),
-                            Compare::Le => self.ctx.lte(arg1, arg2),
-                            Compare::Eq => self.ctx.eq(arg1, arg2),
-                            Compare::Ge => self.ctx.gte(arg1, arg2),
-                            Compare::Gt => self.ctx.gt(arg1, arg2),
-                            Compare::Ne => self.ctx.not(self.ctx.eq(arg1, arg2)),
-                        };
-                        self.ctx.assert(self.ctx.eq(res, arg3)).unwrap();
-                    } else {
-                        let res = match cmp {
-                            Compare::Lt => self.ctx.bvslt(arg1, arg2),
-                            Compare::Le => self.ctx.bvsle(arg1, arg2),
-                            Compare::Eq => self.ctx.eq(arg1, arg2),
-                            Compare::Ge => self.ctx.bvsge(arg1, arg2),
-                            Compare::Gt => self.ctx.bvsgt(arg1, arg2),
-                            Compare::Ne => self.ctx.not(self.ctx.eq(arg1, arg2)),
-                        };
-                        self.ctx.assert(self.ctx.eq(res, arg3)).unwrap();
-                    }
+                    let res = match cmp {
+                        Compare::Lt => self.ctx.bvslt(arg1, arg2),
+                        Compare::Le => self.ctx.bvsle(arg1, arg2),
+                        Compare::Eq => self.ctx.eq(arg1, arg2),
+                        Compare::Ge => self.ctx.bvsge(arg1, arg2),
+                        Compare::Gt => self.ctx.bvsgt(arg1, arg2),
+                        Compare::Ne => self.ctx.not(self.ctx.eq(arg1, arg2)),
+                    };
+                    self.ctx.assert(self.ctx.eq(res, arg3)).unwrap();
                 }
                 (Prim::BAnd | Prim::BOr, &[arg1, arg2, arg3]) => {
                     let res = match prim {
@@ -165,11 +124,11 @@ impl SmtLibSolver {
     fn atom_to_sexp(&self, atom: &AtomVal<IdentCtx>, map: &HashMap<IdentCtx, SExpr>) -> SExpr {
         match atom {
             Term::Var(var) => map[var],
-            Term::Lit(LitVal::Int(x)) => match self.int_rep {
-                IntRep::Num => self.ctx.numeral(*x),
-                IntRep::BV8 => self.ctx.binary(8, i8::try_from(*x).unwrap()),
-                IntRep::BV16 => self.ctx.binary(16, i16::try_from(*x).unwrap()),
-                IntRep::BV32 => self.ctx.binary(32, *x),
+            Term::Lit(LitVal::Int(x)) => match self.int_width {
+                8 => self.ctx.binary(8, i8::try_from(*x).unwrap()),
+                16 => self.ctx.binary(16, i16::try_from(*x).unwrap()),
+                32 => self.ctx.binary(32, *x),
+                _ => unreachable!(),
             },
             Term::Lit(LitVal::Float(x)) => self.ctx.decimal(*x),
             Term::Lit(LitVal::Bool(x)) => {
@@ -187,27 +146,23 @@ impl SmtLibSolver {
     fn sexp_to_lit_val(&self, sexpr: SExpr) -> Option<LitVal> {
         // println!("sexpr: {}", self.ctx.display(sexpr));
 
-        match self.int_rep {
-            IntRep::Num => {
-                if let Some(res) = self.ctx.get_i32(sexpr) {
-                    return Some(LitVal::Int(res));
-                }
-            }
-            IntRep::BV8 => {
+        match self.int_width {
+            8 => {
                 if let Some(res) = self.ctx.get_u8(sexpr) {
                     return Some(LitVal::Int(res.cast_signed() as i32));
                 }
             }
-            IntRep::BV16 => {
+            16 => {
                 if let Some(res) = self.ctx.get_u16(sexpr) {
                     return Some(LitVal::Int(res.cast_signed() as i32));
                 }
             }
-            IntRep::BV32 => {
+            32 => {
                 if let Some(res) = self.ctx.get_u32(sexpr) {
                     return Some(LitVal::Int(res.cast_signed() as i32));
                 }
             }
+            _ => unreachable!(),
         }
 
         if let Some(res) = self.ctx.get_atom(sexpr) {
@@ -270,35 +225,12 @@ impl common::PrimSolver for SmtLibSolver {
         self.add_constraints(&sexp_map, prims);
         assert_eq!(self.ctx.check().unwrap(), easy_smt::Response::Sat);
 
-        if self.int_rep == IntRep::Num {
-            let vars: Vec<IdentCtx> = ty_map.keys().copied().collect();
-            let res = vars
-                .iter()
-                .cloned()
-                .zip(
-                    self.ctx
-                        .get_value(vars.iter().map(|var| sexp_map[var]).collect())
-                        .unwrap()
-                        .iter()
-                        .map(|(_var, val)| self.sexp_to_lit_val(*val).unwrap()),
-                )
-                .collect();
-
-            return res;
-        }
-
         let mut bits_pool: Vec<(IdentCtx, Option<i32>)> = Vec::new();
         for (var, ty) in ty_map.iter() {
             match ty {
                 LitType::TyInt => {
-                    let width: i32 = match self.int_rep {
-                        IntRep::Num => unreachable!(),
-                        IntRep::BV8 => 8,
-                        IntRep::BV16 => 16,
-                        IntRep::BV32 => 32,
-                    };
-                    for i in 0..width {
-                        bits_pool.push((*var, Some(i)));
+                    for i in 0..self.int_width {
+                        bits_pool.push((*var, Some(i as i32)));
                     }
                 }
                 LitType::TyFloat => todo!(),

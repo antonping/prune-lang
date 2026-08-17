@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Change int and float literals from 64-bit to 32-bit.
 - Reimplement partial answer completion algorithm.
+- Change SMT solving entirely to bit-vector theory.
 
 ### Removed
 
