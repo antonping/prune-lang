@@ -1,4 +1,5 @@
 use super::*;
+use crate::logic::ast::QueryParam;
 use clap::{Parser, ValueEnum};
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -77,6 +78,22 @@ pub struct CliArgs {
 
     #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
     pub warn_as_err: bool,
+}
+
+impl CliArgs {
+    pub fn set_param(&mut self, param: &QueryParam) {
+        match param {
+            QueryParam::AnswerLimit(x) => {
+                self.answer_limit = *x;
+            }
+            QueryParam::TimeLimit(x) => {
+                self.time_limit = *x;
+            }
+            QueryParam::MemLimit(x) => {
+                self.mem_limit = *x;
+            }
+        }
+    }
 }
 
 pub fn parse_cli_args() -> CliArgs {

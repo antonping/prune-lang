@@ -1,46 +1,32 @@
 use super::common::*;
 use super::*;
-
 use easy_smt::{Context, ContextBuilder, SExpr};
 use rand::seq::SliceRandom;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Solver {
-    Z3,
-    CVC5,
-}
-
-#[allow(dead_code)]
-pub struct SmtLibSolver {
+pub struct SmtLibSolver<'args> {
+    args: &'args CliArgs,
     ctx: Context,
-    solver: Solver,
-    int_width: usize,
 }
 
-impl SmtLibSolver {
-    pub fn new(solver: Solver, int_width: usize) -> Self {
+impl<'args> SmtLibSolver<'args> {
+    pub fn new(args: &'args CliArgs) -> Self {
         let mut ctx_bld = ContextBuilder::new();
-        match solver {
-            Solver::Z3 => {
+        match args.solver {
+            args::Solver::Z3 => {
                 ctx_bld.solver("z3").solver_args(["-smt2", "-in", "-v:0"]);
             }
-            Solver::CVC5 => {
+            args::Solver::CVC5 => {
                 ctx_bld
                     .solver("cvc5")
                     .solver_args(["--quiet", "--lang=smt2", "--incremental"]);
             }
+            args::Solver::NoSmt => unreachable!(),
         }
 
         // ctx_bld.replay_file(Some(std::fs::File::create("replay.smt2").unwrap()));
         let mut ctx = ctx_bld.build().unwrap();
         ctx.push().unwrap(); // push an empty context for reset
-
-        assert!(vec![8, 16, 32].contains(&int_width));
-        SmtLibSolver {
-            ctx,
-            solver,
-            int_width,
-        }
+        SmtLibSolver { ctx, args }
     }
 
     fn declare_vars(&mut self, ty_map: &HashMap<IdentCtx, LitType>) -> HashMap<IdentCtx, SExpr> {
@@ -48,7 +34,9 @@ impl SmtLibSolver {
             .iter()
             .map(|(var, typ)| {
                 let sort = match typ {
-                    LitType::TyInt => self.ctx.bit_vec_sort(self.ctx.numeral(self.int_width)),
+                    LitType::TyInt => self
+                        .ctx
+                        .bit_vec_sort(self.ctx.numeral(self.args.int_rep.get_width())),
                     LitType::TyFloat => self.ctx.real_sort(),
                     LitType::TyBool => self.ctx.bool_sort(),
                     LitType::TyChar => todo!(),
@@ -124,11 +112,10 @@ impl SmtLibSolver {
     fn atom_to_sexp(&self, atom: &AtomVal<IdentCtx>, map: &HashMap<IdentCtx, SExpr>) -> SExpr {
         match atom {
             Term::Var(var) => map[var],
-            Term::Lit(LitVal::Int(x)) => match self.int_width {
-                8 => self.ctx.binary(8, i8::try_from(*x).unwrap()),
-                16 => self.ctx.binary(16, i16::try_from(*x).unwrap()),
-                32 => self.ctx.binary(32, *x),
-                _ => unreachable!(),
+            Term::Lit(LitVal::Int(x)) => match self.args.int_rep {
+                args::IntRep::BV8 => self.ctx.binary(8, i8::try_from(*x).unwrap()),
+                args::IntRep::BV16 => self.ctx.binary(16, i16::try_from(*x).unwrap()),
+                args::IntRep::BV32 => self.ctx.binary(32, *x),
             },
             Term::Lit(LitVal::Float(x)) => self.ctx.decimal(*x),
             Term::Lit(LitVal::Bool(x)) => {
@@ -146,23 +133,22 @@ impl SmtLibSolver {
     fn sexp_to_lit_val(&self, sexpr: SExpr) -> Option<LitVal> {
         // println!("sexpr: {}", self.ctx.display(sexpr));
 
-        match self.int_width {
-            8 => {
+        match self.args.int_rep {
+            args::IntRep::BV8 => {
                 if let Some(res) = self.ctx.get_u8(sexpr) {
                     return Some(LitVal::Int(res.cast_signed() as i32));
                 }
             }
-            16 => {
+            args::IntRep::BV16 => {
                 if let Some(res) = self.ctx.get_u16(sexpr) {
                     return Some(LitVal::Int(res.cast_signed() as i32));
                 }
             }
-            32 => {
+            args::IntRep::BV32 => {
                 if let Some(res) = self.ctx.get_u32(sexpr) {
                     return Some(LitVal::Int(res.cast_signed() as i32));
                 }
             }
-            _ => unreachable!(),
         }
 
         if let Some(res) = self.ctx.get_atom(sexpr) {
@@ -183,7 +169,7 @@ impl SmtLibSolver {
     }
 }
 
-impl common::PrimSolver for SmtLibSolver {
+impl<'args> common::PrimSolver for SmtLibSolver<'args> {
     fn check_sat(&mut self, prims: &[(Prim, Vec<AtomVal<IdentCtx>>)]) -> bool {
         // fast path for empty solver query
         if prims.is_empty() {
@@ -229,7 +215,7 @@ impl common::PrimSolver for SmtLibSolver {
         for (var, ty) in ty_map.iter() {
             match ty {
                 LitType::TyInt => {
-                    for i in 0..self.int_width {
+                    for i in 0..self.args.int_rep.get_width() {
                         bits_pool.push((*var, Some(i as i32)));
                     }
                 }

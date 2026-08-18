@@ -1,18 +1,23 @@
-use crate::interp::branch::{Answer, walk_free_var};
-
 use super::*;
+use crate::interp::branch::{Answer, walk_free_var};
 use rand::seq::SliceRandom;
 
-struct Completer<'prog, 'rng> {
+struct Completer<'prog, 'args, 'rng> {
     prog: &'prog Program,
+    args: &'args CliArgs,
     rng: &'rng mut rand::rngs::ThreadRng,
     map: HashMap<IdentCtx, TermVal<IdentCtx>>,
 }
 
-impl<'prog, 'rng> Completer<'prog, 'rng> {
-    fn new(prog: &'prog Program, rng: &'rng mut rand::rngs::ThreadRng) -> Self {
+impl<'prog, 'args, 'rng> Completer<'prog, 'args, 'rng> {
+    fn new(
+        prog: &'prog Program,
+        args: &'args CliArgs,
+        rng: &'rng mut rand::rngs::ThreadRng,
+    ) -> Self {
         Completer {
             prog,
+            args,
             rng,
             map: HashMap::new(),
         }
@@ -36,7 +41,11 @@ impl<'prog, 'rng> Completer<'prog, 'rng> {
             return None;
         }
         match ty {
-            Term::Lit(LitType::TyInt) => Some(Term::Lit(LitVal::Int(self.rng.random()))),
+            Term::Lit(LitType::TyInt) => match self.args.int_rep {
+                args::IntRep::BV8 => Some(Term::Lit(LitVal::Int(self.rng.random::<i8>() as i32))),
+                args::IntRep::BV16 => Some(Term::Lit(LitVal::Int(self.rng.random::<i16>() as i32))),
+                args::IntRep::BV32 => Some(Term::Lit(LitVal::Int(self.rng.random::<i32>()))),
+            },
             Term::Lit(LitType::TyFloat) => Some(Term::Lit(LitVal::Float(self.rng.random()))),
             Term::Lit(LitType::TyBool) => Some(Term::Lit(LitVal::Bool(self.rng.random()))),
             Term::Lit(LitType::TyChar) => Some(Term::Lit(LitVal::Char(self.rng.random()))),
@@ -99,14 +108,19 @@ impl<'prog, 'rng> Completer<'prog, 'rng> {
     }
 }
 
-pub fn answer_complete(prog: &Program, rng: &mut rand::rngs::ThreadRng, ansrs: &mut Vec<Answer>) {
+pub fn answer_complete(
+    prog: &Program,
+    args: &CliArgs,
+    rng: &mut rand::rngs::ThreadRng,
+    ansrs: &mut Vec<Answer>,
+) {
     let mut map = HashMap::new();
     for ansr in ansrs.iter() {
         walk_free_var(prog, &ansr.val, &ansr.ty, &mut map);
     }
     // println!("map: {:?}", map);
 
-    let mut completer = Completer::new(prog, rng);
+    let mut completer = Completer::new(prog, args, rng);
     for (var, ty) in map.into_iter() {
         completer.complete_value(var, &ty);
     }

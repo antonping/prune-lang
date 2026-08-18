@@ -125,9 +125,13 @@ impl<'a> Pipeline<'a> {
         let mut output = create_output_writer(self.args, &self.src_path)?;
         writeln!(output.prog, "{prog}").unwrap();
 
+        let mut args = self.args.clone();
         let mut res_vec = Vec::new();
-        let mut runner = interp::generator::Generator::new(prog, &mut output, self.args);
         for query_decl in &prog.querys {
+            for param in &query_decl.params {
+                args.set_param(&param);
+            }
+            let mut runner = interp::generator::Generator::new(prog, &args, &mut output);
             let res = runner.run_loop(query_decl);
             res_vec.push(res);
         }

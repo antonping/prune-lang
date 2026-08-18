@@ -1,10 +1,8 @@
-use rand::seq::SliceRandom;
-
 use super::branch::*;
 use super::*;
-use crate::cli::args::{self, CliArgs};
 use crate::cli::pipeline::OutputWriter;
-use crate::interp;
+use crate::interp::{completer, solver};
+use rand::seq::SliceRandom;
 
 enum GenResult {
     Success {
@@ -18,27 +16,28 @@ enum GenResult {
     Timeout,
 }
 
-pub struct Generator<'prog, 'io> {
+pub struct Generator<'prog, 'args, 'io> {
     prog: &'prog Program,
+    args: &'args CliArgs,
     output: &'io mut OutputWriter,
-    config: interp::config::ExecConfig,
+    start_time: std::time::Instant,
     ansr_cnt: usize,
     rng: rngs::ThreadRng,
-    solver: Box<dyn solver::common::PrimSolver>,
+    solver: Box<dyn solver::common::PrimSolver + 'args>,
 }
 
-impl<'prog, 'io> Generator<'prog, 'io> {
+impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
     pub fn new(
         prog: &'prog Program,
+        args: &'args CliArgs,
         output: &'io mut OutputWriter,
-        args: &CliArgs,
-    ) -> Generator<'prog, 'io> {
-        let solver = interp::solver::common::new_solver(args);
-        let config = interp::config::ExecConfig::new(args);
+    ) -> Generator<'prog, 'args, 'io> {
+        let solver = solver::common::new_solver(args);
         Generator {
             prog,
+            args,
             output,
-            config,
+            start_time: std::time::Instant::now(),
             ansr_cnt: 0,
             rng: rand::rng(),
             solver,
@@ -46,10 +45,6 @@ impl<'prog, 'io> Generator<'prog, 'io> {
     }
 
     pub fn run_loop(&mut self, query_decl: &QueryDecl) -> usize {
-        for param in &query_decl.params {
-            self.config.set_param(param);
-        }
-
         let mut size: f32 = 1.0;
 
         loop {
@@ -100,12 +95,12 @@ impl<'prog, 'io> Generator<'prog, 'io> {
                 }
             }
 
-            if self.ansr_cnt >= self.config.answer_limit {
+            if self.ansr_cnt >= self.args.answer_limit {
                 writeln!(self.output.answer, "[STOP]: Answer limit exceeded!").unwrap();
                 break;
             }
-            let time = self.config.start_time.elapsed().as_secs_f32();
-            if time > self.config.time_limit as f32 {
+            let time = self.start_time.elapsed().as_secs_f32();
+            if time > self.args.time_limit as f32 {
                 writeln!(self.output.answer, "[STOP]: Time limit exceeded!").unwrap();
                 break;
             }
@@ -137,7 +132,7 @@ impl<'prog, 'io> Generator<'prog, 'io> {
                 assert!(self.solver.check_sat(&brch.prims));
                 let smt_time = self.solve_smt_constraints(&mut brch);
                 self.ansr_cnt += 1;
-                interp::completer::answer_complete(self.prog, &mut self.rng, &mut brch.ansrs);
+                completer::answer_complete(self.prog, self.args, &mut self.rng, &mut brch.ansrs);
                 return GenResult::Success {
                     brch,
                     br_time: time,
@@ -171,7 +166,7 @@ impl<'prog, 'io> Generator<'prog, 'io> {
     }
 
     fn branch_split(&mut self, brch: &Branch) -> Vec<Branch> {
-        let call_idx = match self.config.heuristic {
+        let call_idx = match self.args.heuristic {
             args::Heuristic::LeftBiased => brch.left_biased_strategy(),
             args::Heuristic::Interleave => brch.interleave_strategy(),
             args::Heuristic::SmallFirst => brch.small_first_strategy(),
