@@ -7,7 +7,7 @@ use rand::seq::SliceRandom;
 enum GenResult {
     Success {
         brch: Branch,
-        br_time: usize,
+        run_time: usize,
         smt_time: usize,
     },
     Exhausted {
@@ -45,25 +45,43 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
     }
 
     pub fn run_loop(&mut self, query_decl: &QueryDecl) -> usize {
-        let mut size: f32 = 1.0;
+        let mut size: usize = 0;
+        let mut grow_count: usize = 0;
 
         loop {
-            size += 0.2;
+            grow_count += 1;
+            if grow_count >= self.args.depth_grow {
+                grow_count = 0;
+                size += 1;
+            }
+            let low_size = size;
+            let high_size = size + self.args.depth_range;
 
-            let low_size = size.floor() as usize;
-            let high_size = size.floor() as usize + 5;
+            let time = self.start_time.elapsed().as_secs() as usize;
+            if time > self.args.time_limit {
+                writeln!(self.output.answer, "[STOP]: Time limit exceeded!").unwrap();
+                break;
+            }
+            if self.ansr_cnt >= self.args.answer_limit {
+                writeln!(self.output.answer, "[STOP]: Answer limit exceeded!").unwrap();
+                break;
+            }
+            if high_size > self.args.depth_limit {
+                writeln!(self.output.answer, "[STOP]: Depth limit exceeded!").unwrap();
+                break;
+            }
+
             let res = self.run_sized(query_decl.entry, low_size, high_size);
-
             match res {
                 GenResult::Success {
                     brch,
-                    br_time,
+                    run_time,
                     smt_time,
                 } => {
                     writeln!(
                         self.output.answer,
-                        "[ANSWER]({}): depth={}, range=({},{}), br_time={:.2}ms, smt_time={:.2}ms",
-                        self.ansr_cnt, brch.depth, low_size, high_size, br_time, smt_time
+                        "[ANSWER]({}): depth={}, range=({},{}), run_time={:.2}ms, smt_time={:.2}ms",
+                        self.ansr_cnt, brch.depth, low_size, high_size, run_time, smt_time
                     )
                     .unwrap();
                     for Answer { par, ty, val } in &brch.ansrs {
@@ -84,6 +102,7 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
                         low_size, high_size, time,
                     )
                     .unwrap();
+                    size = high_size + 1;
                 }
                 GenResult::Timeout => {
                     writeln!(
@@ -93,16 +112,6 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
                     )
                     .unwrap();
                 }
-            }
-
-            if self.ansr_cnt >= self.args.answer_limit {
-                writeln!(self.output.answer, "[STOP]: Answer limit exceeded!").unwrap();
-                break;
-            }
-            let time = self.start_time.elapsed().as_secs_f32();
-            if time > self.args.time_limit as f32 {
-                writeln!(self.output.answer, "[STOP]: Time limit exceeded!").unwrap();
-                break;
             }
         }
 
@@ -115,8 +124,8 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
 
         let time_start = std::time::Instant::now();
         while !stack.is_empty() {
-            let time = time_start.elapsed().as_millis() as usize;
-            if time > 1000 {
+            let run_time = time_start.elapsed().as_millis() as usize;
+            if run_time > self.args.time_limit_per {
                 return GenResult::Timeout;
             }
 
@@ -135,7 +144,7 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
                 completer::answer_complete(self.prog, self.args, &mut self.rng, &mut brch.ansrs);
                 return GenResult::Success {
                     brch,
-                    br_time: time,
+                    run_time,
                     smt_time,
                 };
             } else {

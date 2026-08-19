@@ -9,10 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add time and memory limit parameters.
 - Implement size-based search algorithm as generator.
 - Add integer representation parameter for SMT solver.
 - Support randomized model generation in SMT solving.
+- Add more CLI parameters for new generator architecture.
 
 ### Changed
 

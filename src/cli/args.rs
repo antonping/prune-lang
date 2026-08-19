@@ -49,14 +49,23 @@ pub struct CliArgs {
     #[arg(long, default_value = "hybrid", value_name = "HEURISTIC")]
     pub heuristic: Heuristic,
 
+    #[arg(long, default_value_t = usize::MAX, value_name = "TIME(s)")]
+    pub time_limit: usize,
+
+    #[arg(long, default_value_t = 1000, value_name = "TIME(ms)")]
+    pub time_limit_per: usize,
+
     #[arg(long, default_value_t = usize::MAX, value_name = "INT")]
     pub answer_limit: usize,
 
     #[arg(long, default_value_t = usize::MAX, value_name = "INT")]
-    pub time_limit: usize,
+    pub depth_limit: usize,
 
-    #[arg(long, default_value_t = usize::MAX, value_name = "INT")]
-    pub mem_limit: usize,
+    #[arg(long, default_value_t = 5, value_name = "INT")]
+    pub depth_range: usize,
+
+    #[arg(long, default_value_t = 5, value_name = "INT")]
+    pub depth_grow: usize,
 
     #[arg(short, long, default_value_t = 10, value_name = "INT")]
     pub verbosity: u8,
@@ -89,8 +98,8 @@ impl CliArgs {
             QueryParam::TimeLimit(x) => {
                 self.time_limit = *x;
             }
-            QueryParam::MemLimit(x) => {
-                self.mem_limit = *x;
+            QueryParam::MemLimit(_x) => {
+                todo!();
             }
         }
     }
@@ -106,9 +115,12 @@ pub fn get_test_cli_args(prog_name: PathBuf) -> CliArgs {
         solver: Solver::Z3,
         int_rep: IntRep::BV16,
         heuristic: Heuristic::Hybrid,
-        answer_limit: usize::MAX,
         time_limit: usize::MAX,
-        mem_limit: usize::MAX,
+        time_limit_per: 1000,
+        answer_limit: usize::MAX,
+        depth_limit: 1000,
+        depth_range: 5,
+        depth_grow: 5,
         verbosity: 10,
         dump_file: false,
         debug_mode: false,
@@ -129,9 +141,12 @@ pub fn get_bench_cli_args(
         solver: Solver::Z3,
         int_rep: IntRep::BV16,
         heuristic,
-        answer_limit,
         time_limit: usize::MAX,
-        mem_limit: usize::MAX,
+        time_limit_per: 1000,
+        answer_limit,
+        depth_limit: 1000,
+        depth_range: 5,
+        depth_grow: 5,
         verbosity: 10,
         dump_file: false,
         debug_mode: false,
