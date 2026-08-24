@@ -37,11 +37,9 @@ pub fn infer_type(prims: &[(Prim, Vec<AtomVal<IdentCtx>>)]) -> HashMap<IdentCtx,
 }
 
 pub fn new_solver<'args>(args: &'args args::CliArgs) -> Box<dyn PrimSolver + 'args> {
-    let solver: Box<dyn PrimSolver> = match args.solver {
-        args::Solver::Z3 | args::Solver::CVC5 => {
-            Box::new(super::solver::smtlib::SmtLibSolver::new(args))
-        }
-        args::Solver::NoSmt => Box::new(super::solver::no_smt::NoSmtSolver::new()),
-    };
-    solver
+    if args.solver == args::Solver::NoSmt {
+        Box::new(super::solver::no_smt::NoSmtSolver::new())
+    } else {
+        Box::new(super::solver::smtlib::SmtLibSolver::new(args))
+    }
 }

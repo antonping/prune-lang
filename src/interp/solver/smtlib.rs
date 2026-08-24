@@ -20,13 +20,40 @@ impl<'args> SmtLibSolver<'args> {
                     .solver("cvc5")
                     .solver_args(["--quiet", "--lang=smt2", "--incremental"]);
             }
+            args::Solver::Bitwuzla => {
+                ctx_bld
+                    .solver("bitwuzla")
+                    .solver_args(["--lang=smt2", "--produce-models"]);
+            }
             args::Solver::NoSmt => unreachable!(),
         }
 
         // ctx_bld.replay_file(Some(std::fs::File::create("replay.smt2").unwrap()));
         let mut ctx = ctx_bld.build().unwrap();
-        ctx.push().unwrap(); // push an empty context for reset
+        ctx.set_logic("QF_BV").unwrap();
+
+        match args.solver {
+            args::Solver::Z3 | args::Solver::CVC5 => {
+                // push an empty context for reset
+                ctx.push().unwrap();
+            }
+            args::Solver::Bitwuzla => {}
+            args::Solver::NoSmt => unreachable!(),
+        }
         SmtLibSolver { ctx, args }
+    }
+
+    fn reset(&mut self) {
+        match self.args.solver {
+            args::Solver::Z3 | args::Solver::CVC5 => {
+                self.ctx.pop().unwrap();
+                self.ctx.push().unwrap();
+            }
+            args::Solver::Bitwuzla => {
+                *self = Self::new(self.args);
+            }
+            args::Solver::NoSmt => unreachable!(),
+        }
     }
 
     fn declare_vars(&mut self, ty_map: &HashMap<IdentCtx, LitType>) -> HashMap<IdentCtx, SExpr> {
@@ -175,10 +202,7 @@ impl<'args> common::PrimSolver for SmtLibSolver<'args> {
         if prims.is_empty() {
             return true;
         }
-
-        // reset solver state
-        self.ctx.pop().unwrap();
-        self.ctx.push().unwrap();
+        self.reset();
 
         let ty_map: HashMap<IdentCtx, LitType> = infer_type(prims);
         let sexp_map = self.declare_vars(&ty_map);
@@ -201,10 +225,7 @@ impl<'args> common::PrimSolver for SmtLibSolver<'args> {
         if prims.is_empty() {
             return HashMap::new();
         }
-
-        // reset solver state
-        self.ctx.pop().unwrap();
-        self.ctx.push().unwrap();
+        self.reset();
 
         let ty_map: HashMap<IdentCtx, LitType> = infer_type(prims);
         let sexp_map = self.declare_vars(&ty_map);

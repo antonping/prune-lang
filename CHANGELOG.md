@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add integer representation parameter for SMT solver.
 - Support randomized model generation in SMT solving.
 - Add more CLI parameters for new generator architecture.
+- Support Bitwuzla SMT solver backend.
 
 ### Changed
 
