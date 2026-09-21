@@ -216,6 +216,15 @@ impl<'src> Parser<'src> {
                     Err(ParseError::LexerError(self.peek_span().clone()))
                 }
             }
+            Token::String => {
+                let s = self.peek_slice();
+                if let Ok(s) = snailquote::unescape(s) {
+                    self.next_token();
+                    Ok(LitVal::String(std::rc::Rc::new(s)))
+                } else {
+                    Err(ParseError::LexerError(self.peek_span().clone()))
+                }
+            }
             _tok => Err(ParseError::FailedToParse(
                 "literal value",
                 self.peek_token(),

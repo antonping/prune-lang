@@ -120,6 +120,8 @@ pub enum Token {
     Bool,
     #[regex(r"'(.|\\.)'")]
     Char,
+    #[regex(r#""([^"\\]|\\.)*""#)]
+    String,
     #[token("Int")]
     TyInt,
     #[token("Float")]

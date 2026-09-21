@@ -67,6 +67,7 @@ impl<'args> SmtLibSolver<'args> {
                     LitType::TyFloat => self.ctx.real_sort(),
                     LitType::TyBool => self.ctx.bool_sort(),
                     LitType::TyChar => todo!(),
+                    LitType::TyString => todo!(),
                 };
                 let sexp = self.ctx.declare_const(format!("{var:?}"), sort).unwrap();
                 (*var, sexp)
@@ -153,6 +154,7 @@ impl<'args> SmtLibSolver<'args> {
                 }
             }
             Term::Lit(LitVal::Char(_x)) => todo!(),
+            Term::Lit(LitVal::String(_x)) => todo!(),
             Term::Cons(_cons, _flds) => unreachable!(),
         }
     }
@@ -245,6 +247,7 @@ impl<'args> common::PrimSolver for SmtLibSolver<'args> {
                     bits_pool.push((*var, None));
                 }
                 LitType::TyChar => todo!(),
+                LitType::TyString => todo!(),
             }
         }
         bits_pool.shuffle(rng);

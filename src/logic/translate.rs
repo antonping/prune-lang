@@ -46,7 +46,7 @@ impl Translater {
 
     fn translate_expr(&mut self, expr: &ast::Expr) -> (TermVal, Goal) {
         match expr {
-            ast::Expr::Lit { lit, span: _ } => (Term::Lit(*lit), Goal::Lit(true)),
+            ast::Expr::Lit { lit, span: _ } => (Term::Lit(lit.clone()), Goal::Lit(true)),
             ast::Expr::Var { var, span: _ } => (Term::Var(var.ident), Goal::Lit(true)),
             ast::Expr::Prim {
                 prim,
@@ -243,7 +243,7 @@ impl Translater {
 
     fn translate_patn(&mut self, patn: &ast::Pattern) -> TermVal {
         match patn {
-            ast::Pattern::Lit { lit, span: _ } => TermVal::Lit(*lit),
+            ast::Pattern::Lit { lit, span: _ } => TermVal::Lit(lit.clone()),
             ast::Pattern::Var { var, span: _ } => {
                 self.vars
                     .push((var.ident, TermType::Var(Ident::fresh(&"a"))));

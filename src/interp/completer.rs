@@ -49,6 +49,14 @@ impl<'prog, 'args, 'rng> Completer<'prog, 'args, 'rng> {
             Term::Lit(LitType::TyFloat) => Some(Term::Lit(LitVal::Float(self.rng.random()))),
             Term::Lit(LitType::TyBool) => Some(Term::Lit(LitVal::Bool(self.rng.random()))),
             Term::Lit(LitType::TyChar) => Some(Term::Lit(LitVal::Char(self.rng.random()))),
+            Term::Lit(LitType::TyString) => {
+                const ALPHABET: &[u8] =
+                    b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+                let s: String = (0..size)
+                    .map(|_| ALPHABET[self.rng.random_range(0..ALPHABET.len())] as char)
+                    .collect();
+                Some(Term::Lit(LitVal::String(std::rc::Rc::new(s))))
+            }
             Term::Cons(OptCons::None, ty_args) => {
                 let sizes = self.distribute_size(ty_args.len(), size - 1)?;
                 let mut args = Vec::new();

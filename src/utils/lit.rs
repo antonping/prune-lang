@@ -7,6 +7,7 @@ pub enum LitType {
     TyFloat,
     TyBool,
     TyChar,
+    TyString,
 }
 
 impl fmt::Display for LitType {
@@ -16,6 +17,7 @@ impl fmt::Display for LitType {
             LitType::TyFloat => "Float".fmt(f),
             LitType::TyBool => "Bool".fmt(f),
             LitType::TyChar => "Char".fmt(f),
+            LitType::TyString => "String".fmt(f),
         }
     }
 }
@@ -29,17 +31,19 @@ impl FromStr for LitType {
             "Float" => Ok(LitType::TyFloat),
             "Bool" => Ok(LitType::TyBool),
             "Char" => Ok(LitType::TyChar),
+            "String" => Ok(LitType::TyString),
             _ => Err(()),
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum LitVal {
     Int(i32),
     Float(f32),
     Bool(bool),
     Char(char),
+    String(std::rc::Rc<String>),
 }
 
 impl LitVal {
@@ -49,6 +53,7 @@ impl LitVal {
             LitVal::Float(_) => LitType::TyFloat,
             LitVal::Bool(_) => LitType::TyBool,
             LitVal::Char(_) => LitType::TyChar,
+            LitVal::String(_) => LitType::TyString,
         }
     }
 }
@@ -60,6 +65,7 @@ impl fmt::Display for LitVal {
             LitVal::Float(x) => x.fmt(f),
             LitVal::Bool(x) => x.fmt(f),
             LitVal::Char(x) => x.fmt(f),
+            LitVal::String(x) => x.fmt(f),
         }
     }
 }

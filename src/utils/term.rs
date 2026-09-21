@@ -84,40 +84,40 @@ impl<V, L, C> Term<V, L, C> {
     }
 }
 
-impl<L: Copy, C: Copy> Term<Ident, L, C> {
+impl<L: Clone, C: Clone> Term<Ident, L, C> {
     pub fn tag_ctx(&self, ctx: usize) -> Term<IdentCtx, L, C> {
         match self {
             Term::Var(var) => Term::Var(var.tag_ctx(ctx)),
-            Term::Lit(lit) => Term::Lit(*lit),
+            Term::Lit(lit) => Term::Lit(lit.clone()),
             Term::Cons(cons, flds) => {
                 let flds = flds.iter().map(|fld| fld.tag_ctx(ctx)).collect();
-                Term::Cons(*cons, flds)
+                Term::Cons(cons.clone(), flds)
             }
         }
     }
 }
 
-impl<V: Copy, L: Copy, C: Copy> Term<V, L, C> {
+impl<V: Clone, L: Clone, C: Clone> Term<V, L, C> {
     pub fn to_atom(&self) -> Option<Term<V, L, Infallible>> {
         match self {
-            Term::Var(var) => Some(Term::Var(*var)),
-            Term::Lit(lit) => Some(Term::Lit(*lit)),
+            Term::Var(var) => Some(Term::Var(var.clone())),
+            Term::Lit(lit) => Some(Term::Lit(lit.clone())),
             Term::Cons(_cons, _flds) => None,
         }
     }
 }
 
-impl<V: Copy, L: Copy> Term<V, L, Infallible> {
+impl<V: Clone, L: Clone> Term<V, L, Infallible> {
     pub fn to_term<C>(&self) -> Term<V, L, C> {
         match self {
-            Term::Var(var) => Term::Var(*var),
-            Term::Lit(lit) => Term::Lit(*lit),
+            Term::Var(var) => Term::Var(var.clone()),
+            Term::Lit(lit) => Term::Lit(lit.clone()),
             Term::Cons(_cons, _flds) => unreachable!(),
         }
     }
 }
 
-impl<V: Copy + Eq, L, C> Term<V, L, C> {
+impl<V: Clone + Eq, L, C> Term<V, L, C> {
     pub fn occurs(&self, x: &V) -> bool {
         match self {
             Term::Var(y) => x == y,
@@ -136,7 +136,7 @@ impl<V: Copy + Eq, L, C> Term<V, L, C> {
         match self {
             Term::Var(var) => {
                 if !vec.contains(var) {
-                    vec.push(*var);
+                    vec.push(var.clone());
                 }
             }
             Term::Lit(_lit) => {}
@@ -149,20 +149,20 @@ impl<V: Copy + Eq, L, C> Term<V, L, C> {
     }
 }
 
-impl<V: Copy + Eq + std::hash::Hash, L: Copy, C: Copy> Term<V, L, C> {
+impl<V: Clone + Eq + std::hash::Hash, L: Clone, C: Clone> Term<V, L, C> {
     pub fn substitute(&self, map: &HashMap<V, Term<V, L, C>>) -> Term<V, L, C> {
         match self {
             Term::Var(var) => {
                 if let Some(term) = map.get(var) {
                     term.clone()
                 } else {
-                    Term::Var(*var)
+                    Term::Var(var.clone())
                 }
             }
-            Term::Lit(lit) => Term::Lit(*lit),
+            Term::Lit(lit) => Term::Lit(lit.clone()),
             Term::Cons(cons, flds) => {
                 let flds = flds.iter().map(|fld| fld.substitute(map)).collect();
-                Term::Cons(*cons, flds)
+                Term::Cons(cons.clone(), flds)
             }
         }
     }
