@@ -85,14 +85,7 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
                     )
                     .unwrap();
                     for Answer { par, ty, val } in &brch.ansrs {
-                        writeln!(
-                            self.output.answer,
-                            "{}: {} = {}",
-                            par,
-                            reinterp_type(ty),
-                            reinterp_term(val)
-                        )
-                        .unwrap();
+                        writeln!(self.output.answer, "{}: {} = {}", par, ty, val).unwrap();
                     }
                 }
                 GenResult::Exhausted { time } => {

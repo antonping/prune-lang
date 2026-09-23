@@ -66,12 +66,8 @@ impl<'a> Pipeline<'a> {
 
         self.check_pass(&mut prog)?;
 
-        let mut prog = self.compile_pass(&prog);
+        let prog = self.compile_pass(&prog);
 
-        if self.args.solver == args::Solver::NoSmt {
-            prog.extend_builtin();
-            prog.replace_builtin();
-        }
         Ok(prog)
     }
 

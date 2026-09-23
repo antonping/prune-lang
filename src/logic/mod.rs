@@ -8,7 +8,6 @@ use std::collections::HashMap;
 use ast::*;
 
 pub mod ast;
-pub mod builtin;
 pub mod compile;
 pub mod elaborate;
 pub mod normalize;
