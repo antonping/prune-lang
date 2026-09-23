@@ -6,4 +6,5 @@ begin
     guard a * a + b * b = c * c;
 end
 
-query example(time_limit=10)
+%param time_limit 10;
+%query example;

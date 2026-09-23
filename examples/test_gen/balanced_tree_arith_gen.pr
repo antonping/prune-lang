@@ -43,4 +43,5 @@ begin
     guard is_balanced(tree);
 end
 
-query example(time_limit=10)
+%param time_limit 10;
+%query example;

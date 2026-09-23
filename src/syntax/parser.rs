@@ -830,53 +830,44 @@ impl<'src> Parser<'src> {
         })
     }
 
-    fn parse_query_decl(&mut self) -> ParseResult<QueryDecl> {
+    fn parse_command(&mut self) -> ParseResult<Command> {
         let start = self.start_pos();
-        self.match_token(Token::Query)?;
-        let entry = self.parse_lower_var()?;
-        let params = self.delimited_list(Token::LParen, Token::Comma, Token::RParen, |par| {
-            let (name, val, span) = par.parse_query_param()?;
-            match (name.ident.as_str(), val) {
-                ("answer_limit", LitVal::Int(x)) if x > 0 => {
-                    Ok((QueryParam::AnswerLimit(x as usize), span))
-                }
-                ("time_limit", LitVal::Int(x)) if x > 0 => {
-                    Ok((QueryParam::TimeLimit(x as usize), span))
-                }
-                ("mem_limit", LitVal::Int(x)) if x > 0 => {
-                    Ok((QueryParam::MemLimit(x as usize), span))
-                }
-                _ => Err(ParseError::FailedToParse(
-                    "query parameter",
-                    Token::LowerIdent,
-                    span,
-                )),
+        match self.peek_token() {
+            Token::CmdParam => {
+                self.next_token();
+                let name = self.parse_lower_var()?;
+                let name = name.ident.name;
+                let val = self.parse_lit_val()?;
+                self.match_token(Token::Semi)?;
+                let end = self.end_pos();
+                let span = Span { start, end };
+                Ok(Command::Param { name, val, span })
             }
-        })?;
-        let end = self.end_pos();
-        let span = Span { start, end };
-        Ok(QueryDecl {
-            entry,
-            params,
-            span,
-        })
-    }
-
-    fn parse_query_param(&mut self) -> ParseResult<(Var, LitVal, Span)> {
-        let start = self.start_pos();
-        let name = self.parse_lower_var()?;
-        self.match_token(Token::Equal)?;
-        let val = self.parse_lit_val()?;
-        let end = self.end_pos();
-        let span = Span { start, end };
-        Ok((name, val, span))
+            Token::CmdQuery => {
+                self.next_token();
+                let func = self.parse_lower_var()?;
+                self.match_token(Token::Semi)?;
+                let end = self.end_pos();
+                let span = Span { start, end };
+                Ok(Command::Query { func, span })
+            }
+            tok => {
+                let end = self.end_pos();
+                let span = Span { start, end };
+                Err(ParseError::FailedToParse("command", tok, span))
+            }
+        }
     }
 
     fn skip_failure_tokens(&mut self) {
         // skip all tokens before the next "header" token
         loop {
             match self.peek_token() {
-                Token::Datatype | Token::Function | Token::Query | Token::EndOfFile => {
+                Token::Datatype
+                | Token::Function
+                | Token::CmdParam
+                | Token::CmdQuery
+                | Token::EndOfFile => {
                     break;
                 }
                 Token::TokError => {
@@ -895,7 +886,7 @@ impl<'src> Parser<'src> {
     fn parse_program(&mut self) -> Program {
         let mut datas = Vec::new();
         let mut funcs = Vec::new();
-        let mut querys = Vec::new();
+        let mut cmds = Vec::new();
         loop {
             match self.peek_token() {
                 Token::Datatype => match self.parse_data_decl() {
@@ -912,8 +903,8 @@ impl<'src> Parser<'src> {
                         self.skip_failure_tokens();
                     }
                 },
-                Token::Query => match self.parse_query_decl() {
-                    Ok(decl) => querys.push(decl),
+                Token::CmdParam | Token::CmdQuery => match self.parse_command() {
+                    Ok(cmd) => cmds.push(cmd),
                     Err(err) => {
                         self.errors.push(err);
                         self.skip_failure_tokens();
@@ -931,11 +922,7 @@ impl<'src> Parser<'src> {
             }
         }
         self.match_token(Token::EndOfFile).unwrap();
-        Program {
-            datas,
-            funcs,
-            querys,
-        }
+        Program { datas, funcs, cmds }
     }
 }
 

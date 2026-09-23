@@ -87,4 +87,5 @@ begin
     guard infer_stmts(Nil, stmts) = ctx;
 end
 
-query example(time_limit=10)
+%param time_limit 10;
+%query example;

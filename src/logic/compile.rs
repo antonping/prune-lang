@@ -59,22 +59,16 @@ fn compile_cons_decl(data: Ident, polys: &[Ident], cons: &ast::Constructor) -> C
     }
 }
 
-fn compile_query(query: &ast::QueryDecl) -> QueryDecl {
-    QueryDecl {
-        entry: query.entry.ident,
-        params: query
-            .params
-            .iter()
-            .map(|(param, _span)| compile_query_param(param))
-            .collect(),
-    }
-}
-
-fn compile_query_param(param: &ast::QueryParam) -> QueryParam {
-    match param {
-        ast::QueryParam::AnswerLimit(x) => QueryParam::AnswerLimit(*x),
-        ast::QueryParam::TimeLimit(x) => QueryParam::TimeLimit(*x),
-        ast::QueryParam::MemLimit(x) => QueryParam::MemLimit(*x),
+fn compile_command(cmd: &ast::Command) -> Command {
+    match cmd {
+        ast::Command::Param { name, val, span: _ } => Command::Param {
+            name: *name,
+            val: val.clone(),
+        },
+        ast::Command::Query { func, span: _ } => {
+            let pred = func.ident;
+            Command::Query { pred }
+        }
     }
 }
 
@@ -102,12 +96,12 @@ pub fn compile_pass(prog: &ast::Program) -> Program {
         preds.insert(*pred, pred_decl);
     }
 
-    let querys = prog.querys.iter().map(compile_query).collect();
+    let cmds = prog.cmds.iter().map(compile_command).collect();
 
     Program {
         datas,
         conss,
         preds,
-        querys,
+        cmds,
     }
 }

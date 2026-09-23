@@ -171,4 +171,5 @@ begin
     guard add_bv8(mul_bv4(a, a), mul_bv4(b, b)) = mul_bv4(c, c);
 end
 
-query example(time_limit=10)
+%param time_limit 10;
+%query example;

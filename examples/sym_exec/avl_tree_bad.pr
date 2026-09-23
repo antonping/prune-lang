@@ -147,4 +147,6 @@ begin
     end
 end
 
-query example(answer_limit=1, time_limit=10)
+%param answer_limit 1;
+%param time_limit 10;
+%query example;

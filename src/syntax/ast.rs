@@ -1,10 +1,12 @@
+use crate::utils::intern::InternStr;
+
 use super::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Program {
     pub datas: Vec<DataDecl>,
     pub funcs: Vec<FuncDecl>,
-    pub querys: Vec<QueryDecl>,
+    pub cmds: Vec<Command>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -194,15 +196,14 @@ impl Expr {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct QueryDecl {
-    pub entry: Var,
-    pub params: Vec<(QueryParam, Span)>,
-    pub span: Span,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum QueryParam {
-    AnswerLimit(usize),
-    TimeLimit(usize),
-    MemLimit(usize),
+pub enum Command {
+    Param {
+        name: InternStr,
+        val: LitVal,
+        span: Span,
+    },
+    Query {
+        func: Var,
+        span: Span,
+    },
 }

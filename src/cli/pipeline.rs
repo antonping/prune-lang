@@ -2,7 +2,7 @@ use super::args::{self, CliArgs};
 use super::diagnostic::{DiagLevel, Diagnostic};
 use super::*;
 use crate::cli::replay::ReplayWriter;
-use crate::logic::ast::Program;
+use crate::logic::ast::{Command, Program};
 use crate::{interp, logic, syntax, tych};
 
 pub struct OutputWriter {
@@ -121,19 +121,30 @@ impl<'a> Pipeline<'a> {
         prog
     }
 
-    pub fn run_backend(&self, prog: &logic::ast::Program) -> Result<Vec<usize>, io::Error> {
+    pub fn run_commands(&self, prog: &logic::ast::Program) -> Result<Vec<usize>, io::Error> {
         let mut output = create_output_writer(self.args, &self.src_path)?;
         writeln!(output.prog, "{prog}").unwrap();
 
         let mut args = self.args.clone();
         let mut res_vec = Vec::new();
-        for query_decl in &prog.querys {
-            for param in &query_decl.params {
-                args.set_param(&param);
+        for cmd in &prog.cmds {
+            match cmd {
+                Command::Param { name, val } => match args.set_param(name.as_str(), val) {
+                    Ok(s) => {
+                        println!("{}", s.as_str());
+                    }
+                    Err(s) => {
+                        println!("{}", s.as_str());
+                        break;
+                    }
+                },
+                Command::Query { pred } => {
+                    println!("running query `{}`......", pred);
+                    let mut runner = interp::generator::Generator::new(prog, &args, &mut output);
+                    let res = runner.run_loop(*pred);
+                    res_vec.push(res);
+                }
             }
-            let mut runner = interp::generator::Generator::new(prog, &args, &mut output);
-            let res = runner.run_loop(query_decl);
-            res_vec.push(res);
         }
         Ok(res_vec)
     }
@@ -226,7 +237,7 @@ pub fn run_cli_pipeline() -> Result<Vec<usize>, io::Error> {
     let args = args::parse_cli_args();
     let mut pipe = Pipeline::new(&args);
     let prog = pipe.run_compiler_pipline()?;
-    let res = pipe.run_backend(&prog)?;
+    let res = pipe.run_commands(&prog)?;
     Ok(res)
 }
 
@@ -234,7 +245,7 @@ pub fn run_test_pipeline(prog_name: PathBuf) -> Result<Vec<usize>, io::Error> {
     let args = args::get_test_cli_args(prog_name);
     let mut pipe = Pipeline::new(&args);
     let prog = pipe.run_compiler_pipline()?;
-    let res = pipe.run_backend(&prog)?;
+    let res = pipe.run_commands(&prog)?;
     Ok(res)
 }
 
@@ -254,6 +265,6 @@ pub fn run_bench_pipeline(
     let args = args::get_bench_cli_args(prog_name, heuristic, depth_limit);
     let mut pipe = Pipeline::new(&args);
     let prog = pipe.run_compiler_pipline()?;
-    let res = pipe.run_backend(&prog)?;
+    let res = pipe.run_commands(&prog)?;
     Ok(res)
 }

@@ -44,7 +44,7 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
         }
     }
 
-    pub fn run_loop(&mut self, query_decl: &QueryDecl) -> usize {
+    pub fn run_loop(&mut self, pred: Ident) -> usize {
         let mut size: usize = 0;
         let mut grow_count: usize = 0;
 
@@ -71,7 +71,7 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
                 break;
             }
 
-            let res = self.run_sized(query_decl.entry, low_size, high_size);
+            let res = self.run_sized(pred, low_size, high_size);
             match res {
                 GenResult::Success {
                     brch,

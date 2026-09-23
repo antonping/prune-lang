@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::utils::intern::InternStr;
 use itertools::Itertools;
 use std::fmt;
 
@@ -8,7 +9,7 @@ pub struct Program {
     pub datas: HashMap<Ident, DataDecl>,
     pub conss: HashMap<Ident, ConsDecl>,
     pub preds: HashMap<Ident, PredDecl>,
-    pub querys: Vec<QueryDecl>,
+    pub cmds: Vec<Command>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -81,16 +82,9 @@ pub struct PredDecl {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct QueryDecl {
-    pub entry: Ident,
-    pub params: Vec<QueryParam>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum QueryParam {
-    AnswerLimit(usize),
-    TimeLimit(usize),
-    MemLimit(usize),
+pub enum Command {
+    Param { name: InternStr, val: LitVal },
+    Query { pred: Ident },
 }
 
 impl fmt::Display for PredDecl {

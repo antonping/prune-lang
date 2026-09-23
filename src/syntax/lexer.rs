@@ -89,6 +89,10 @@ pub enum Token {
     Of,
     #[token("as")]
     As,
+    #[token("in")]
+    In,
+    #[token("where")]
+    Where,
     #[token("begin")]
     Begin,
     #[token("end")]
@@ -107,10 +111,10 @@ pub enum Token {
     Datatype,
     #[token("function")]
     Function,
-    #[token("query")]
-    Query,
-    #[token("where")]
-    Where,
+    #[token("%param")]
+    CmdParam,
+    #[token("%query")]
+    CmdQuery,
     #[regex(r"-?[0-9]([0-9])*")]
     Int,
     #[regex(r"-?[0-9]([0-9])*\.[0-9]([0-9])*")]

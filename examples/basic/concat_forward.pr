@@ -22,4 +22,5 @@ begin
     guard concat(rev_nat_list(10), rev_nat_list(10)) = zs;
 end
 
-query example(time_limit=10)
+%param time_limit 10;
+%query example;

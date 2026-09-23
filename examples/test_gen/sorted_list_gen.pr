@@ -19,4 +19,5 @@ begin
     guard is_sorted(lst);
 end
 
-query example(time_limit=10)
+%param time_limit 10;
+%query example;

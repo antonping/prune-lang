@@ -27,4 +27,5 @@ begin
     guard rev_nat_list(10) = reverse(xs);
 end
 
-query example(time_limit=10)
+%param time_limit 10;
+%query example;

@@ -61,4 +61,5 @@ begin
     guard is_sorted(insert(tree, x)) = false;
 end
 
-query example(time_limit=10)
+%param time_limit 10;
+%query example;

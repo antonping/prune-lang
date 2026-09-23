@@ -54,6 +54,7 @@ pub enum RenameError {
 }
 
 use crate::cli::diagnostic::Diagnostic;
+
 impl From<RenameError> for Diagnostic {
     fn from(val: RenameError) -> Self {
         match val {
@@ -376,8 +377,19 @@ impl Renamer {
         self.leave_scope();
     }
 
-    fn visit_query_decl(&mut self, query_decl: &mut QueryDecl) {
-        self.update_var(&mut query_decl.entry, VarType::Function);
+    fn visit_command(&mut self, cmd: &mut Command) {
+        match cmd {
+            Command::Param {
+                name: _,
+                val: _,
+                span: _,
+            } => {
+                // do nothing
+            }
+            Command::Query { func, span: _ } => {
+                self.update_var(func, VarType::Function);
+            }
+        }
     }
 
     fn visit_prog(&mut self, prog: &mut Program) {
@@ -395,8 +407,8 @@ impl Renamer {
         for func_decl in &mut prog.funcs {
             self.visit_func_decl(func_decl);
         }
-        for query_decl in &mut prog.querys {
-            self.visit_query_decl(query_decl);
+        for cmd in &mut prog.cmds {
+            self.visit_command(cmd);
         }
     }
 }

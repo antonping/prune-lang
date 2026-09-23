@@ -1,5 +1,6 @@
+use crate::utils::lit::LitVal;
+
 use super::*;
-use crate::logic::ast::QueryParam;
 use clap::{Parser, ValueEnum};
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -91,18 +92,67 @@ pub struct CliArgs {
 }
 
 impl CliArgs {
-    pub fn set_param(&mut self, param: &QueryParam) {
-        match param {
-            QueryParam::AnswerLimit(x) => {
-                self.answer_limit = *x;
+    pub fn set_param(&mut self, name: &str, val: &LitVal) -> Result<String, String> {
+        let val_str = val.to_string();
+        match (name, val) {
+            ("solver", LitVal::String(s)) if s.as_str() == "z3" => self.solver = Solver::Z3,
+            ("solver", LitVal::String(s)) if s.as_str() == "cvc5" => self.solver = Solver::CVC5,
+            ("solver", LitVal::String(s)) if s.as_str() == "bitwuzla" => {
+                self.solver = Solver::Bitwuzla
             }
-            QueryParam::TimeLimit(x) => {
-                self.time_limit = *x;
+            ("solver", LitVal::String(s)) if s.as_str() == "no-smt" => self.solver = Solver::NoSmt,
+            ("int_rep", LitVal::String(s)) if s.as_str() == "bv8" => self.int_rep = IntRep::BV8,
+            ("int_rep", LitVal::String(s)) if s.as_str() == "bv16" => self.int_rep = IntRep::BV16,
+            ("int_rep", LitVal::String(s)) if s.as_str() == "bv32" => self.int_rep = IntRep::BV32,
+            ("heuristic", LitVal::String(s)) if s.as_str() == "left-biased" => {
+                self.heuristic = Heuristic::LeftBiased;
             }
-            QueryParam::MemLimit(_x) => {
-                todo!();
+            ("heuristic", LitVal::String(s)) if s.as_str() == "interleave" => {
+                self.heuristic = Heuristic::Interleave;
+            }
+            ("heuristic", LitVal::String(s)) if s.as_str() == "small-first" => {
+                self.heuristic = Heuristic::SmallFirst;
+            }
+            ("heuristic", LitVal::String(s)) if s.as_str() == "hybrid" => {
+                self.heuristic = Heuristic::Hybrid;
+            }
+            ("heuristic", LitVal::String(s)) if s.as_str() == "random" => {
+                self.heuristic = Heuristic::Random;
+            }
+            ("time_limit", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
+                self.time_limit = n;
+            }
+            ("time_limit_per", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
+                self.time_limit_per = n;
+            }
+            ("answer_limit", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
+                self.answer_limit = n;
+            }
+            ("depth_limit", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
+                self.depth_limit = n;
+            }
+            ("depth_range", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
+                self.depth_range = n;
+            }
+            ("depth_grow", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
+                self.depth_grow = n;
+            }
+            ("verbosity", &LitVal::Int(x)) if let Ok(n) = u8::try_from(x) => {
+                self.verbosity = n;
+            }
+            ("dump_file", &LitVal::Bool(b)) => self.dump_file = b,
+            ("debug_mode", &LitVal::Bool(b)) => self.debug_mode = b,
+            ("show_output", &LitVal::Bool(b)) => self.show_output = b,
+            ("show_stat", &LitVal::Bool(b)) => self.show_stat = b,
+            ("show_prog", &LitVal::Bool(b)) => self.show_prog = b,
+            ("warn_as_err", &LitVal::Bool(b)) => self.warn_as_err = b,
+            (n, v) => {
+                return Err(format!(
+                    "unsupported parameter `{n}` or invalid value `{v}` for this parameter!"
+                ));
             }
         }
+        Ok(format!("parameter `{name}` has been set to `{val_str}`."))
     }
 }
 
