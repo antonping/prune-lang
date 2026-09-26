@@ -4,7 +4,7 @@ use std::fmt;
 
 #[derive(Clone, Debug)]
 pub struct Branch {
-    pub depth: usize,
+    pub size: usize,
     pub ansrs: Vec<Answer>,
     pub prims: Vec<(Prim, Vec<AtomVal<IdentCtx>>)>,
     pub calls: Vec<PredCall>,
@@ -23,12 +23,12 @@ pub struct PredCall {
     pub polys: Vec<TermType>,
     pub args: Vec<TermVal<IdentCtx>>,
     pub looks: Vec<usize>,
-    pub depth: usize,
+    pub size: usize,
 }
 
 impl fmt::Display for Branch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "##### depth: = {} #####", self.depth)?;
+        writeln!(f, "##### size: = {} #####", self.size)?;
 
         for ansr in &self.ansrs {
             writeln!(f, "{ansr}")?;
@@ -72,11 +72,11 @@ impl Branch {
             polys: Vec::new(),
             args: pars.iter().map(|par| Term::Var(par.tag_ctx(0))).collect(),
             looks: (0..rule_cnt).collect(),
-            depth: 0,
+            size: 0,
         };
 
         Branch {
-            depth: 0,
+            size: 0,
             ansrs: pars
                 .iter()
                 .map(|par| Answer {
@@ -125,7 +125,7 @@ impl Branch {
             return idx;
         }
         (0..self.calls.len())
-            .min_by_key(|idx| self.calls[*idx].depth)
+            .min_by_key(|idx| self.calls[*idx].size)
             .unwrap()
     }
 
@@ -136,7 +136,7 @@ impl Branch {
         (0..self.calls.len())
             .min_by_key(|idx| {
                 let call = &self.calls[*idx];
-                call.looks.len() * 1000 + call.depth
+                call.looks.len() * 1000 + call.size
             })
             .unwrap()
     }
@@ -148,7 +148,7 @@ impl Branch {
         (0..self.calls.len())
             .min_by_key(|idx| {
                 let call = &self.calls[*idx];
-                call.looks.len() * 2 + call.depth
+                call.looks.len() * 2 + call.size
             })
             .unwrap()
     }
@@ -186,7 +186,7 @@ pub fn apply_rule(
     rule_idx: usize,
 ) -> Option<Branch> {
     let rules = &prog.preds[&brch.calls[call_idx].pred].rules;
-    let rule_ctx = rules[rule_idx].tag_ctx(brch.depth);
+    let rule_ctx = rules[rule_idx].tag_ctx(brch.size);
 
     let call = &brch.calls[call_idx];
     assert_eq!(rule_ctx.head.len(), call.args.len());
@@ -199,7 +199,7 @@ pub fn apply_rule(
     }
 
     let mut new_brch = brch.clone();
-    new_brch.depth += 1;
+    new_brch.size += 1;
     new_brch.remove(call_idx);
 
     for (prim, args) in &rule_ctx.prims {
@@ -216,7 +216,7 @@ pub fn apply_rule(
             polys: polys.clone(),
             args: args.clone(),
             looks: (0..prog.preds[pred].rules.len()).collect(),
-            depth: call.depth + 1,
+            size: call.size + 1,
         };
 
         new_call.lookahead_update(&prog.preds[pred].rules);
@@ -298,12 +298,12 @@ pub fn branch_init(prog: &Program, pred: Ident) -> Branch {
             .map(|(par, _ty)| Term::Var(par.tag_ctx(0)))
             .collect(),
         looks: (0..rules.len()).collect(),
-        depth: 0,
+        size: 0,
     };
     call.lookahead_update(rules);
 
     let brch = Branch {
-        depth: 0,
+        size: 0,
         ansrs: prog.preds[&pred]
             .pars
             .iter()

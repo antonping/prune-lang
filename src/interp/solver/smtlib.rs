@@ -61,9 +61,7 @@ impl<'args> SmtLibSolver<'args> {
             .iter()
             .map(|(var, typ)| {
                 let sort = match typ {
-                    LitType::TyInt => self
-                        .ctx
-                        .bit_vec_sort(self.ctx.numeral(self.args.int_rep.get_width())),
+                    LitType::TyInt => self.ctx.bit_vec_sort(self.ctx.numeral(self.args.int_width)),
                     LitType::TyFloat => self.ctx.real_sort(),
                     LitType::TyBool => self.ctx.bool_sort(),
                     LitType::TyChar => todo!(),
@@ -140,10 +138,11 @@ impl<'args> SmtLibSolver<'args> {
     fn atom_to_sexp(&self, atom: &AtomVal<IdentCtx>, map: &HashMap<IdentCtx, SExpr>) -> SExpr {
         match atom {
             Term::Var(var) => map[var],
-            Term::Lit(LitVal::Int(x)) => match self.args.int_rep {
-                args::IntRep::BV8 => self.ctx.binary(8, i8::try_from(*x).unwrap()),
-                args::IntRep::BV16 => self.ctx.binary(16, i16::try_from(*x).unwrap()),
-                args::IntRep::BV32 => self.ctx.binary(32, *x),
+            Term::Lit(LitVal::Int(x)) => match self.args.int_width {
+                8 => self.ctx.binary(8, i8::try_from(*x).unwrap()),
+                16 => self.ctx.binary(16, i16::try_from(*x).unwrap()),
+                32 => self.ctx.binary(32, *x),
+                _ => unreachable!(),
             },
             Term::Lit(LitVal::Float(x)) => self.ctx.decimal(*x),
             Term::Lit(LitVal::Bool(x)) => {
@@ -162,22 +161,23 @@ impl<'args> SmtLibSolver<'args> {
     fn sexp_to_lit_val(&self, sexpr: SExpr) -> Option<LitVal> {
         // println!("sexpr: {}", self.ctx.display(sexpr));
 
-        match self.args.int_rep {
-            args::IntRep::BV8 => {
+        match self.args.int_width {
+            8 => {
                 if let Some(res) = self.ctx.get_u8(sexpr) {
                     return Some(LitVal::Int(res.cast_signed() as i32));
                 }
             }
-            args::IntRep::BV16 => {
+            16 => {
                 if let Some(res) = self.ctx.get_u16(sexpr) {
                     return Some(LitVal::Int(res.cast_signed() as i32));
                 }
             }
-            args::IntRep::BV32 => {
+            32 => {
                 if let Some(res) = self.ctx.get_u32(sexpr) {
                     return Some(LitVal::Int(res.cast_signed() as i32));
                 }
             }
+            _ => unreachable!(),
         }
 
         if let Some(res) = self.ctx.get_atom(sexpr) {
@@ -238,7 +238,7 @@ impl<'args> common::PrimSolver for SmtLibSolver<'args> {
         for (var, ty) in ty_map.iter() {
             match ty {
                 LitType::TyInt => {
-                    for i in 0..self.args.int_rep.get_width() {
+                    for i in 0..self.args.int_width {
                         bits_pool.push((*var, Some(i as i32)));
                     }
                 }

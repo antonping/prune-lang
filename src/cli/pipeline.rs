@@ -256,9 +256,9 @@ pub fn run_test_diag_pipeline(prog_name: PathBuf, msg_out: &mut Vec<u8>) -> Resu
 pub fn run_bench_pipeline(
     prog_name: PathBuf,
     heuristic: args::Heuristic,
-    depth_limit: usize,
+    size_limit: usize,
 ) -> Result<Vec<usize>, io::Error> {
-    let args = args::get_bench_cli_args(prog_name, heuristic, depth_limit);
+    let args = args::get_bench_cli_args(prog_name, heuristic, size_limit);
     let mut pipe = Pipeline::new(&args);
     let prog = pipe.run_compiler_pipline()?;
     let res = pipe.run_commands(&prog)?;

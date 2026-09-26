@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reimplement partial answer completion algorithm.
 - Change SMT solving entirely to bit-vector theory.
 - Change syntax for setting parameters and running query.
+- Refactor CLI parameter design.
 
 ### Removed
 

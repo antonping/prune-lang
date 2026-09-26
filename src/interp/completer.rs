@@ -41,10 +41,11 @@ impl<'prog, 'args, 'rng> Completer<'prog, 'args, 'rng> {
             return None;
         }
         match ty {
-            Term::Lit(LitType::TyInt) => match self.args.int_rep {
-                args::IntRep::BV8 => Some(Term::Lit(LitVal::Int(self.rng.random::<i8>() as i32))),
-                args::IntRep::BV16 => Some(Term::Lit(LitVal::Int(self.rng.random::<i16>() as i32))),
-                args::IntRep::BV32 => Some(Term::Lit(LitVal::Int(self.rng.random::<i32>()))),
+            Term::Lit(LitType::TyInt) => match self.args.int_width {
+                8 => Some(Term::Lit(LitVal::Int(self.rng.random::<i8>() as i32))),
+                16 => Some(Term::Lit(LitVal::Int(self.rng.random::<i16>() as i32))),
+                32 => Some(Term::Lit(LitVal::Int(self.rng.random::<i32>()))),
+                _ => unreachable!(),
             },
             Term::Lit(LitType::TyFloat) => Some(Term::Lit(LitVal::Float(self.rng.random()))),
             Term::Lit(LitType::TyBool) => Some(Term::Lit(LitVal::Bool(self.rng.random()))),

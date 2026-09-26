@@ -1,6 +1,6 @@
-use crate::utils::lit::LitVal;
-
 use super::*;
+use crate::utils::lit::LitVal;
+use clap::builder::{PossibleValuesParser, TypedValueParser};
 use clap::{Parser, ValueEnum};
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -9,23 +9,6 @@ pub enum Solver {
     CVC5,
     Bitwuzla,
     NoSmt,
-}
-
-#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
-pub enum IntRep {
-    BV8,
-    BV16,
-    BV32,
-}
-
-impl IntRep {
-    pub fn get_width(&self) -> usize {
-        match self {
-            IntRep::BV8 => 8,
-            IntRep::BV16 => 16,
-            IntRep::BV32 => 32,
-        }
-    }
 }
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -42,34 +25,34 @@ pub enum Heuristic {
 pub struct CliArgs {
     pub input: PathBuf,
 
-    #[arg(long, default_value = "no-smt", value_name = "SOLVER")]
+    #[arg(long, default_value = "no-smt")]
     pub solver: Solver,
 
-    #[arg(long, default_value = "bv16", value_name = "INT_REP")]
-    pub int_rep: IntRep,
+    #[arg(long, default_value_t = 16, value_parser = PossibleValuesParser::new(["8", "16", "32"]).map(|s| s.parse::<u8>().unwrap()))]
+    pub int_width: u8,
 
-    #[arg(long, default_value = "hybrid", value_name = "HEURISTIC")]
+    #[arg(long, default_value = "hybrid")]
     pub heuristic: Heuristic,
 
-    #[arg(long, default_value_t = usize::MAX, value_name = "TIME(s)")]
-    pub time_limit: usize,
+    #[arg(long)]
+    pub time_limit: Option<usize>,
 
-    #[arg(long, default_value_t = 1000, value_name = "TIME(ms)")]
-    pub time_limit_per: usize,
+    #[arg(long)]
+    pub size_limit: Option<usize>,
 
-    #[arg(long, default_value_t = usize::MAX, value_name = "INT")]
-    pub answer_limit: usize,
+    #[arg(long)]
+    pub answer_limit: Option<usize>,
 
-    #[arg(long, default_value_t = usize::MAX, value_name = "INT")]
-    pub depth_limit: usize,
+    #[arg(long, default_value_t = 1000)]
+    pub time_per_run: usize,
 
-    #[arg(long, default_value_t = 5, value_name = "INT")]
-    pub depth_range: usize,
+    #[arg(long, default_value_t = 5)]
+    pub size_range: usize,
 
-    #[arg(long, default_value_t = 5, value_name = "INT")]
-    pub depth_grow: usize,
+    #[arg(long, default_value_t = 5)]
+    pub size_grow: usize,
 
-    #[arg(short, long, default_value_t = 10, value_name = "INT")]
+    #[arg(short, long, default_value_t = 10)]
     pub verbosity: u8,
 
     #[arg(long, default_value_t = false, action = clap::ArgAction::SetTrue)]
@@ -101,9 +84,9 @@ impl CliArgs {
                 self.solver = Solver::Bitwuzla
             }
             ("solver", LitVal::String(s)) if s.as_str() == "no-smt" => self.solver = Solver::NoSmt,
-            ("int_rep", LitVal::String(s)) if s.as_str() == "bv8" => self.int_rep = IntRep::BV8,
-            ("int_rep", LitVal::String(s)) if s.as_str() == "bv16" => self.int_rep = IntRep::BV16,
-            ("int_rep", LitVal::String(s)) if s.as_str() == "bv32" => self.int_rep = IntRep::BV32,
+            ("int_width", &LitVal::Int(x)) if [8, 16, 32].contains(&x) => {
+                self.int_width = x as u8;
+            }
             ("heuristic", LitVal::String(s)) if s.as_str() == "left-biased" => {
                 self.heuristic = Heuristic::LeftBiased;
             }
@@ -120,22 +103,22 @@ impl CliArgs {
                 self.heuristic = Heuristic::Random;
             }
             ("time_limit", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
-                self.time_limit = n;
-            }
-            ("time_limit_per", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
-                self.time_limit_per = n;
+                self.time_limit = Some(n);
             }
             ("answer_limit", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
-                self.answer_limit = n;
+                self.answer_limit = Some(n);
             }
-            ("depth_limit", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
-                self.depth_limit = n;
+            ("size_limit", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
+                self.size_limit = Some(n);
             }
-            ("depth_range", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
-                self.depth_range = n;
+            ("time_per_run", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
+                self.time_per_run = n;
             }
-            ("depth_grow", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
-                self.depth_grow = n;
+            ("size_range", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
+                self.size_range = n;
+            }
+            ("size_grow", &LitVal::Int(x)) if let Ok(n) = usize::try_from(x) => {
+                self.size_grow = n;
             }
             ("verbosity", &LitVal::Int(x)) if let Ok(n) = u8::try_from(x) => {
                 self.verbosity = n;
@@ -164,14 +147,14 @@ pub fn get_test_cli_args(prog_name: PathBuf) -> CliArgs {
     CliArgs {
         input: prog_name,
         solver: Solver::Z3,
-        int_rep: IntRep::BV16,
+        int_width: 16,
         heuristic: Heuristic::Hybrid,
-        time_limit: usize::MAX,
-        time_limit_per: 1000,
-        answer_limit: usize::MAX,
-        depth_limit: 1000,
-        depth_range: 5,
-        depth_grow: 5,
+        time_limit: None,
+        size_limit: None,
+        answer_limit: None,
+        time_per_run: 1000,
+        size_range: 5,
+        size_grow: 5,
         verbosity: 10,
         dump_file: false,
         debug_mode: false,
@@ -190,14 +173,14 @@ pub fn get_bench_cli_args(
     CliArgs {
         input: prog_name,
         solver: Solver::Z3,
-        int_rep: IntRep::BV16,
+        int_width: 16,
         heuristic,
-        time_limit: usize::MAX,
-        time_limit_per: 1000,
-        answer_limit,
-        depth_limit: 1000,
-        depth_range: 5,
-        depth_grow: 5,
+        time_limit: None,
+        size_limit: None,
+        answer_limit: Some(answer_limit),
+        time_per_run: 1000,
+        size_range: 5,
+        size_grow: 5,
         verbosity: 10,
         dump_file: false,
         debug_mode: false,

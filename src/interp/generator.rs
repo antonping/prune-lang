@@ -50,24 +50,30 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
 
         loop {
             grow_count += 1;
-            if grow_count >= self.args.depth_grow {
+            if grow_count >= self.args.size_grow {
                 grow_count = 0;
                 size += 1;
             }
             let low_size = size;
-            let high_size = size + self.args.depth_range;
+            let high_size = size + self.args.size_range;
 
             let time = self.start_time.elapsed().as_secs() as usize;
-            if time > self.args.time_limit {
+            if let Some(limit) = self.args.time_limit
+                && time > limit
+            {
                 writeln!(self.output.answer, "[STOP]: Time limit exceeded!").unwrap();
                 break;
             }
-            if self.ansr_cnt >= self.args.answer_limit {
+            if let Some(limit) = self.args.answer_limit
+                && self.ansr_cnt > limit
+            {
                 writeln!(self.output.answer, "[STOP]: Answer limit exceeded!").unwrap();
                 break;
             }
-            if high_size > self.args.depth_limit {
-                writeln!(self.output.answer, "[STOP]: Depth limit exceeded!").unwrap();
+            if let Some(limit) = self.args.size_limit
+                && high_size > limit
+            {
+                writeln!(self.output.answer, "[STOP]: Size limit exceeded!").unwrap();
                 break;
             }
 
@@ -80,8 +86,8 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
                 } => {
                     writeln!(
                         self.output.answer,
-                        "[ANSWER]({}): depth={}, range=({},{}), run_time={:.2}ms, smt_time={:.2}ms",
-                        self.ansr_cnt, brch.depth, low_size, high_size, run_time, smt_time
+                        "[ANSWER]({}): size={}, range=({},{}), run_time={:.2}ms, smt_time={:.2}ms",
+                        self.ansr_cnt, brch.size, low_size, high_size, run_time, smt_time
                     )
                     .unwrap();
                     for Answer { par, ty, val } in &brch.ansrs {
@@ -118,17 +124,17 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
         let time_start = std::time::Instant::now();
         while !stack.is_empty() {
             let run_time = time_start.elapsed().as_millis() as usize;
-            if run_time > self.args.time_limit_per {
+            if run_time > self.args.time_per_run {
                 return GenResult::Timeout;
             }
 
             let mut brch = stack.pop().unwrap();
-            if brch.depth + brch.calls.len() > size_high {
+            if brch.size + brch.calls.len() > size_high {
                 continue;
             }
 
             if brch.calls.is_empty() {
-                if brch.depth < size_low {
+                if brch.size < size_low {
                     continue;
                 }
                 assert!(self.solver.check_sat(&brch.prims));
