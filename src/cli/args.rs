@@ -28,7 +28,7 @@ pub struct CliArgs {
     #[arg(long, default_value = "no-smt")]
     pub solver: Solver,
 
-    #[arg(long, default_value_t = 16, value_parser = PossibleValuesParser::new(["8", "16", "32"]).map(|s| s.parse::<u8>().unwrap()))]
+    #[arg(long, default_value_t = 16, value_parser = PossibleValuesParser::new(["8", "16", "32", "64"]).map(|s| s.parse::<u8>().unwrap()))]
     pub int_width: u8,
 
     #[arg(long, default_value = "hybrid")]
@@ -84,7 +84,7 @@ impl CliArgs {
                 self.solver = Solver::Bitwuzla
             }
             ("solver", LitVal::String(s)) if s.as_str() == "no-smt" => self.solver = Solver::NoSmt,
-            ("int_width", &LitVal::Int(x)) if [8, 16, 32].contains(&x) => {
+            ("int_width", &LitVal::Int(x)) if [8, 16, 32, 64].contains(&x) => {
                 self.int_width = x as u8;
             }
             ("heuristic", LitVal::String(s)) if s.as_str() == "left-biased" => {

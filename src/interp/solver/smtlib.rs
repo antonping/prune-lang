@@ -164,17 +164,22 @@ impl<'args> SmtLibSolver<'args> {
         match self.args.int_width {
             8 => {
                 if let Some(res) = self.ctx.get_u8(sexpr) {
-                    return Some(LitVal::Int(res.cast_signed() as i32));
+                    return Some(LitVal::Int(res.cast_signed() as i64));
                 }
             }
             16 => {
                 if let Some(res) = self.ctx.get_u16(sexpr) {
-                    return Some(LitVal::Int(res.cast_signed() as i32));
+                    return Some(LitVal::Int(res.cast_signed() as i64));
                 }
             }
             32 => {
                 if let Some(res) = self.ctx.get_u32(sexpr) {
-                    return Some(LitVal::Int(res.cast_signed() as i32));
+                    return Some(LitVal::Int(res.cast_signed() as i64));
+                }
+            }
+            64 => {
+                if let Some(res) = self.ctx.get_u64(sexpr) {
+                    return Some(LitVal::Int(res.cast_signed() as i64));
                 }
             }
             _ => unreachable!(),

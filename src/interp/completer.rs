@@ -42,9 +42,10 @@ impl<'prog, 'args, 'rng> Completer<'prog, 'args, 'rng> {
         }
         match ty {
             Term::Lit(LitType::TyInt) => match self.args.int_width {
-                8 => Some(Term::Lit(LitVal::Int(self.rng.random::<i8>() as i32))),
-                16 => Some(Term::Lit(LitVal::Int(self.rng.random::<i16>() as i32))),
-                32 => Some(Term::Lit(LitVal::Int(self.rng.random::<i32>()))),
+                8 => Some(Term::Lit(LitVal::Int(self.rng.random::<i8>() as i64))),
+                16 => Some(Term::Lit(LitVal::Int(self.rng.random::<i16>() as i64))),
+                32 => Some(Term::Lit(LitVal::Int(self.rng.random::<i32>() as i64))),
+                64 => Some(Term::Lit(LitVal::Int(self.rng.random::<i64>()))),
                 _ => unreachable!(),
             },
             Term::Lit(LitType::TyFloat) => Some(Term::Lit(LitVal::Float(self.rng.random()))),
