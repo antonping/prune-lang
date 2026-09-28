@@ -12,6 +12,7 @@ enum GenResult {
     },
     Exhausted {
         time: usize,
+        is_complete: bool,
     },
     Timeout,
 }
@@ -55,7 +56,11 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
                 size += 1;
             }
             let low_size = size;
-            let high_size = size + self.args.size_range;
+            let high_size = if let Some(limit) = self.args.size_limit {
+                std::cmp::min(size + self.args.size_range, limit)
+            } else {
+                size + self.args.size_range
+            };
 
             let time = self.start_time.elapsed().as_secs() as usize;
             if let Some(limit) = self.args.time_limit
@@ -64,16 +69,16 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
                 writeln!(self.output.answer, "[STOP]: Time limit exceeded!").unwrap();
                 break;
             }
-            if let Some(limit) = self.args.answer_limit
-                && self.ansr_cnt > limit
-            {
-                writeln!(self.output.answer, "[STOP]: Answer limit exceeded!").unwrap();
-                break;
-            }
             if let Some(limit) = self.args.size_limit
-                && high_size > limit
+                && low_size > limit
             {
                 writeln!(self.output.answer, "[STOP]: Size limit exceeded!").unwrap();
+                break;
+            }
+            if let Some(limit) = self.args.answer_limit
+                && self.ansr_cnt >= limit
+            {
+                writeln!(self.output.answer, "[STOP]: Answer limit exceeded!").unwrap();
                 break;
             }
 
@@ -86,7 +91,7 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
                 } => {
                     writeln!(
                         self.output.answer,
-                        "[ANSWER]({}): size={}, range=({},{}), run_time={:.2}ms, smt_time={:.2}ms",
+                        "[SUCC]: cnt={}, size={}, range=({},{}), run_time={:.2}ms, smt_time={:.2}ms",
                         self.ansr_cnt, brch.size, low_size, high_size, run_time, smt_time
                     )
                     .unwrap();
@@ -94,14 +99,19 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
                         writeln!(self.output.answer, "{}: {} = {}", par, ty, val).unwrap();
                     }
                 }
-                GenResult::Exhausted { time } => {
+                GenResult::Exhausted { time, is_complete } => {
                     writeln!(
                         self.output.answer,
                         "[FAIL]: Search exhausted at range ({}, {}) in {}ms!",
                         low_size, high_size, time,
                     )
                     .unwrap();
-                    size = high_size + 1;
+                    if is_complete {
+                        writeln!(self.output.answer, "[STOP]: The search is completed.").unwrap();
+                        break;
+                    } else {
+                        size = high_size + 1;
+                    }
                 }
                 GenResult::Timeout => {
                     writeln!(
@@ -121,6 +131,7 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
         let brch = branch_init(self.prog, pred);
         let mut stack = vec![brch];
 
+        let mut is_complete = true;
         let time_start = std::time::Instant::now();
         while !stack.is_empty() {
             let run_time = time_start.elapsed().as_millis() as usize;
@@ -130,6 +141,7 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
 
             let mut brch = stack.pop().unwrap();
             if brch.size + brch.calls.len() > size_high {
+                is_complete = false; // Completeness is lost if any branch is pruned.
                 continue;
             }
 
@@ -156,7 +168,7 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
         }
 
         let time = time_start.elapsed().as_millis() as usize;
-        return GenResult::Exhausted { time };
+        return GenResult::Exhausted { time, is_complete };
     }
 
     fn solve_smt_constraints(&mut self, brch: &mut Branch) -> usize {
