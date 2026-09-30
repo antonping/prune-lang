@@ -134,9 +134,13 @@ pub enum Token {
     TyBool,
     #[token("Char")]
     TyChar,
-    #[token("()")] // both for unit type and unit value
+    // `Unit` is both for unit type and unit value
+    #[token("()")]
     Unit,
-    // LowerIdent could be just wildcard "_", it is handled in parser
+    // `Return` is a reserved identifier for return value.
+    #[token("return")]
+    Return,
+    // `LowerIdent` could be just wildcard "_", it is handled in parser
     #[regex(r"([a-z]|_)([a-zA-Z0-9]|_)*")]
     LowerIdent,
     #[regex(r"[A-Z]([a-zA-Z0-9]|_)*")]
@@ -149,7 +153,7 @@ pub enum Token {
     BlockComment,
     #[token("\n")]
     NewLine,
-    /// lexer failed, skip till next whitespace
+    /// `TokError` when lexer fails, it will skip till next whitespace
     TokError,
     EndOfFile,
 }

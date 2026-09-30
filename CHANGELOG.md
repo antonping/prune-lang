@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Change syntax for setting parameters and running query.
 - Refactor CLI parameter design.
 - Change termination condition in query search loop.
+- Modify query answer printing to ignore unit return value.
 
 ### Removed
 

@@ -288,6 +288,22 @@ pub fn branch_init(prog: &Program, pred: Ident) -> Branch {
     // predicate for query can not be polymorphic!
     assert!(prog.preds[&pred].polys.is_empty());
 
+    let mut ansrs: Vec<Answer> = prog.preds[&pred]
+        .pars
+        .iter()
+        .map(|(par, ty)| Answer {
+            par: *par,
+            ty: ty.clone(),
+            val: Term::Var(par.tag_ctx(0)),
+        })
+        .collect();
+
+    // ignore return value if it has unit type.
+    ansrs.pop_if(|ansr| {
+        assert_eq!(ansr.par.as_str(), "return");
+        ansr.ty == Term::Cons(OptCons::None, vec![])
+    });
+
     let rules = &prog.preds[&pred].rules;
     let mut call = PredCall {
         pred,
@@ -302,20 +318,10 @@ pub fn branch_init(prog: &Program, pred: Ident) -> Branch {
     };
     call.lookahead_update(rules);
 
-    let brch = Branch {
+    Branch {
         size: 0,
-        ansrs: prog.preds[&pred]
-            .pars
-            .iter()
-            .map(|(par, ty)| Answer {
-                par: *par,
-                ty: ty.clone(),
-                val: Term::Var(par.tag_ctx(0)),
-            })
-            .collect(),
+        ansrs,
         prims: Vec::new(),
         calls: vec![call],
-    };
-
-    brch
+    }
 }

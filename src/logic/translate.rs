@@ -32,7 +32,7 @@ impl Translater {
             .iter()
             .map(|(var, typ)| (var.ident, translate_type(typ)))
             .collect();
-        let res = Ident::fresh(&"res");
+        let res = Ident::dummy(&"return");
         pars.push((res, translate_type(&func.res)));
         let goal = Goal::And(vec![Goal::Eq(Term::Var(res), term), goal]);
         GoalPredDecl {
