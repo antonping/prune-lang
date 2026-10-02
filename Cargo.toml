@@ -1,6 +1,6 @@
 [package]
 name = "prune-lang"
-version = "0.2.4"
+version = "0.3.0"
 authors = ["Anton Ping <antonping1999@gmail.com>"]
 edition = "2024"
 description = "Prune is a constraint logic programming language with branching heuristic."
@@ -18,9 +18,9 @@ path = "src/main.rs"
 logos = "0.16.1"
 snailquote = "0.3.1"
 itertools = "0.15.0"
-rand = "0.10.2"
+rand = "0.10.3"
 easy-smt = "0.3.2"
-clap = { version = "4.6.2", features = ["derive"] }
+clap = { version = "4.6.7", features = ["derive"] }
 memory-stats = "1.2.0"
 
 [dev-dependencies]
