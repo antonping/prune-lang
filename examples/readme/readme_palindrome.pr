@@ -1,0 +1,25 @@
+datatype List[a] where
+| Nil
+| Cons(a, List[a])
+end
+
+function reverse(xs: List[Int]) -> List[Int]
+begin
+    reverse_help(xs, Nil)
+end
+
+function reverse_help(xs: List[Int], acc: List[Int]) -> List[Int]
+begin
+    match xs with
+    | Nil => acc
+    | Cons(x, ys) => reverse_help(ys, Cons(x, acc))
+    end
+end
+
+function palindrome(xs: List[Int])
+begin
+    guard reverse(xs) = xs;
+end
+
+%param answer_limit 30;
+%query palindrome;

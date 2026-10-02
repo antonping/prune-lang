@@ -90,3 +90,13 @@ fn test_stlc_term_gen() {
 fn test_mini_lang_gen() {
     run_example("test_gen/mini_lang_gen.pr");
 }
+
+#[test]
+fn test_readme_palindrome() {
+    run_example("readme/readme_palindrome.pr");
+}
+
+#[test]
+fn test_readme_sorted_list() {
+    run_example("readme/readme_sorted_list.pr");
+}

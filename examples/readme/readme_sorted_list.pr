@@ -1,0 +1,22 @@
+datatype List[a] where
+| Nil
+| Cons(a, List[a])
+end
+
+function is_sorted(xs: List[Int]) -> Bool
+begin
+    match xs with
+    | Nil => true
+    | Cons(_, Nil) => true
+    | Cons(x, Cons(y, zs)) =>
+        x < y && is_sorted(Cons(y, zs))
+    end
+end
+
+function sorted_list(xs: List[Int])
+begin
+    guard is_sorted(xs) = true;
+end
+
+%param answer_limit 30;
+%query sorted_list;

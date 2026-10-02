@@ -2,150 +2,174 @@
 
 ## Language Overview
 
-- Prune is a constraint logic programming language with branching heuristic.
+Prune is a declarative programming language for describing logic constraints and searching for values that satisfy them, primarily used as a property-based testing (PBT) data generator.
+It allows users to describe complex input preconditions and sample valid test values, without writing custom generators or relying on inefficient random sampling and filtering.
 
-- It is designed as a scalable solver for recursive logic constraints.
+The language is heavily inspired by logic programming languages such as Prolog and MiniKanren.
+Unlike these languages, Prune allows you to define functions and treat them as relations between inputs and outputs.
+This "functional" style improves readability and makes it easier for beginners to get started.
 
-- Suitable but not only for test generation, symbolic execution and program synthesis.
+The search algorithm for queries is based on unification and backtracking, and the choice of sub-goal and branching order is randomized and guided by heuristics.
+For arithmetic constraints, Prune calls an external SMT solver (Z3, cvc5 or Bitwuzla).
+With powerful modern SMT solvers, queries with arithmetic constraints can be solved efficiently.
 
-# Quick Start
-
-## Prerequisites
-### Required
-- [Rust toolchain](https://rustup.rs/) (Cargo)
-
-### Optional (for arithmetic constraints)
-Choose one SMT solver:
-- [Z3 solver](https://github.com/Z3Prover/z3) (Recommended)
-- [CVC5 solver](https://github.com/cvc5/cvc5)
+# Installation
 
 ## Install Prune compiler
 
-### Method 1: Install via Cargo (Recommended)
+The Prune compiler can be installed using `Cargo` (Rust's package manager).
+Before running these commands, make sure you have the [Rust toolchain](https://rustup.rs/) installed.
+
 ```bash
+# Install Prune compiler.
 cargo install prune-lang
-```
 
-### Method 2: Build binary from source
-```bash
-git clone https://github.com/antonping/prune-lang
-cd prune-lang
-cargo build --release
-# The binary will be available at: ./target/release/prune
-# Add it to your system PATH for global access.
-```
-
-### Verify Installation
-
-```bash
 # Check if prune is correctly installed.
 prune --version
-
-# Optional: Verify SMT solver installation
-z3 --version    # for Z3 solver
-cvc5 --version  # for CVC5 solver
 ```
 
-## Run code without SMT solver
+You can also download a prebuilt binary from the GitHub release page, or build it yourself from source.
 
-You can use the Prune compiler without installing an SMT solver, though this limits functionality to programs without arithmetic constraints.
+## (Optional) Install SMT solver
 
-The following example solves the equation `x > 0 && y > 0 && z > 0 && x^2 + y^2 = z^2` using Peano arithmetic encoded in algebraic data types, eliminating the need for an SMT solver. [This example](examples/arith/unary_arith.pr) is available in the repository.
+SMT solvers are used to handle arithmetic constraints over integers and floating-point numbers.
+You can use the Prune compiler without installing an SMT solver, but with some limitations.
+These SMT solvers are supported:
+
+- [Z3 solver](https://github.com/Z3Prover/z3) (Recommended)
+- [cvc5 solver](https://github.com/cvc5/cvc5)
+- [Bitwuzla solver](https://github.com/bitwuzla/bitwuzla)
+
+Installation guides can be found on their GitHub pages linked above.
+
+# Quick Start
+
+To get started, writing a constraint-based data generator takes three steps:
+
+- Define algebraic datatypes.
+- Define functions and predicates over these datatypes.
+- Choose one predicate (or several) to run as a query.
+
+Prune compiles your program into logic rules, then a logic interpreter searches for datatype values that satisfy the query.
+
+## First example: Palindrome (without SMT solver)
+
+In the example below, we define a list datatype and a `reverse` function over it.
+The query will search for a list that stays the same after reversing (in other words, palindromes).
+Since no arithmetic constraints are used, this example runs without an SMT solver.
 
 ```
-datatype Nat where
-| Z
-| S(Nat)
+datatype List[a] where
+| Nil
+| Cons(a, List[a])
 end
 
-function add(x: Nat, y: Nat) -> Nat
+function reverse(xs: List[Int]) -> List[Int]
 begin
-    match x with
-    | Z => y
-    | S(k) => S(add(k, y))
+    reverse_help(xs, Nil)
+end
+
+function reverse_help(xs: List[Int], acc: List[Int]) -> List[Int]
+begin
+    match xs with
+    | Nil => acc
+    | Cons(x, ys) => reverse_help(ys, Cons(x, acc))
     end
 end
 
-function mul(x: Nat, y: Nat) -> Nat
+function palindrome(xs: List[Int])
 begin
-    match x with
-    | Z => Z
-    | S(k) => add(y, mul(k, y))
-    end
+    guard reverse(xs) = xs;
 end
 
-function pythagorean_triple(x: Nat, y: Nat, z: Nat)
-begin
-    let S(_) = x;
-    let S(_) = y;
-    let S(_) = z;
-    guard add(mul(x, x), mul(y, y)) = mul(z, z);
-end
-
-query pythagorean_triple(depth_step=20, depth_limit=200, answer_limit=1)
+%param answer_limit 30;
+%query palindrome;
 ```
 
-To run this example, save the code as test1.pr and execute:
+To run this example, save the code as test1.pr and run the following command:
 
 ```bash
 prune test1.pr
 ```
 
-Sample output:
+The output should look something like this (results vary between runs):
 
 ```
-[RUN]: try depth = 20... (found answer: 0)
-[STAT]: step = 15, step_la = 0(ratio 0), total = 15, 
+[SUCC]: cnt=1, size=3, range=(0,5), run_time=0ms, smt_time=0ms
+xs: List(Int) = Nil
+[SUCC]: cnt=2, size=5, range=(0,5), run_time=0ms, smt_time=0ms
+xs: List(Int) = Cons(3927, Cons(3927, Nil))
+
 ......
-[RUN]: try depth = 180... (found answer: 0)
-[ANSWER]: (depth = 175)
-x = S(S(S(Z)))
-y = S(S(S(S(Z))))
-z = S(S(S(S(S(Z)))))
-res_func = ()
-[STAT]: step = 2944, step_la = 0(ratio 0), total = 2944, acc_total = 28442
-```
 
-The result can be interpreted as `x=3, y=4, z=5`, which is correct.
-
-## Run code with SMT solver backend
-
-Before running the following example, please make sure that you have external SMT solver (Z3 or CVC5) installed.
-
-This version of the Pythagorean triple problem uses integer arithmetic constraints. [This example](examples/feature/smt_sat.pr) is also available in the repository.
+[SUCC]: cnt=29, size=8, range=(5,10), run_time=0ms, smt_time=0ms
+xs: List(Int) = Cons(-15129, Cons(17282, Cons(-26185, Cons(17282, Cons(-15129, Nil)))))
+[SUCC]: cnt=30, size=6, range=(6,11), run_time=0ms, smt_time=0ms
+xs: List(Int) = Cons(20083, Cons(16406, Cons(20083, Nil)))
+[STOP]: Answer limit exceeded!
 
 ```
-function pythagorean_triple(a: Int, b: Int, c: Int)
-begin
-    guard a > 0;
-    guard b > 0;
-    guard c > 0;
-    guard a * a + b * b = c * c;
+
+You can check that all printed answers satisfy the constraint — in other words, they are all palindromes.
+
+## Second example: Sorted List (with SMT solver)
+
+Before running the following example, make sure you have an external SMT solver installed (see `Installation` section).
+
+In this example, we define a function `is_sorted` that checks whether a list is sorted in ascending order.
+The query will search for sorted lists.
+
+```
+datatype List[a] where
+| Nil
+| Cons(a, List[a])
 end
 
-query pythagorean_triple(depth_step=1, depth_limit=1, answer_limit=1)
+function is_sorted(xs: List[Int]) -> Bool
+begin
+    match xs with
+    | Nil => true
+    | Cons(_, Nil) => true
+    | Cons(x, Cons(y, zs)) =>
+        x < y && is_sorted(Cons(y, zs))
+    end
+end
+
+function sorted_list(xs: List[Int])
+begin
+    guard is_sorted(xs) = true;
+end
+
+%param answer_limit 30;
+%query sorted_list;
 ```
 
-Save this code as test2.pr and run:
+Save this code as test2.pr and run the corresponding command:
 
 ```bash
 prune test2.pr --solver z3   # for Z3 solver
-prune test2.pr --solver cvc5 # for CVC5 solver
+prune test2.pr --solver cvc5 # for cvc5 solver
+prune test2.pr --solver bitwuzla # for Bitwuzla solver
 ```
 
-Sample output:
+The output looks like this:
 
 ```
-[RUN]: try depth = 1... (found answer: 0)
-[ANSWER]: (depth = 1)
-a = 3
-b = 4
-c = 5
-res_func = ()
-[STAT]: step = 1, step_la = 0(ratio 0), total = 1, acc_total = 1
+[SUCC]: cnt=1, size=2, range=(0,5), run_time=1ms, smt_time=0ms
+xs: List(Int) = Nil
+[SUCC]: cnt=2, size=2, range=(0,5), run_time=0ms, smt_time=0ms
+xs: List(Int) = Cons(-3439, Nil)
+
+......
+
+[SUCC]: cnt=29, size=6, range=(5,10), run_time=7ms, smt_time=29ms
+xs: List(Int) = Cons(-5360, Cons(-5166, Cons(-344, Cons(16897, Cons(18918, Nil)))))
+[SUCC]: cnt=30, size=6, range=(6,11), run_time=8ms, smt_time=25ms
+xs: List(Int) = Cons(-5301, Cons(8530, Cons(11253, Cons(11427, Cons(29709, Nil)))))
+[STOP]: Answer limit exceeded!
 ```
 
-The resulting triple (a, b, c) may vary between runs. You can verify that each result satisfies the constraints.
+You can check that all these lists are sorted in ascending order.
 
 # License
 
