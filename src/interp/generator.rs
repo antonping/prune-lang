@@ -168,7 +168,7 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
         }
 
         let time = time_start.elapsed().as_millis() as usize;
-        return GenResult::Exhausted { time, is_complete };
+        GenResult::Exhausted { time, is_complete }
     }
 
     fn solve_smt_constraints(&mut self, brch: &mut Branch) -> usize {
@@ -195,10 +195,10 @@ impl<'prog, 'args, 'io> Generator<'prog, 'args, 'io> {
         };
         let mut res = Vec::new();
         for &rule_idx in brch.calls[call_idx].looks.iter() {
-            if let Some(brch) = apply_rule(self.prog, brch, call_idx, rule_idx) {
-                if self.solver.check_sat(&brch.prims) {
-                    res.push(brch);
-                }
+            if let Some(brch) = apply_rule(self.prog, brch, call_idx, rule_idx)
+                && self.solver.check_sat(&brch.prims)
+            {
+                res.push(brch);
             }
         }
         res

@@ -179,7 +179,7 @@ impl<'args> SmtLibSolver<'args> {
             }
             64 => {
                 if let Some(res) = self.ctx.get_u64(sexpr) {
-                    return Some(LitVal::Int(res.cast_signed() as i64));
+                    return Some(LitVal::Int(res.cast_signed()));
                 }
             }
             _ => unreachable!(),
@@ -257,8 +257,7 @@ impl<'args> common::PrimSolver for SmtLibSolver<'args> {
         }
         bits_pool.shuffle(rng);
 
-        while !bits_pool.is_empty() {
-            let (var, idx) = bits_pool.pop().unwrap();
+        while let Some((var, idx)) = bits_pool.pop() {
             let (eq0, eq1) = match idx {
                 Some(idx) => (
                     self.ctx.eq(

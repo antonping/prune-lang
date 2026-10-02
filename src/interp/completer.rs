@@ -68,10 +68,10 @@ impl<'prog, 'args, 'rng> Completer<'prog, 'args, 'rng> {
                 Some(Term::Cons(OptCons::None, args))
             }
             Term::Cons(OptCons::Some(data_name), ty_args) => {
-                let data = &self.prog.datas[&data_name].clone();
+                let data = &self.prog.datas[data_name].clone();
                 let mut conss = data.conss.clone();
                 conss.shuffle(&mut self.rng);
-                for cons_id in &conss {
+                if let Some(cons_id) = conss.first() {
                     let cons = &self.prog.conss[cons_id];
                     let subst: HashMap<Ident, TermType> = cons
                         .polys
@@ -122,7 +122,7 @@ pub fn answer_complete(
     prog: &Program,
     args: &CliArgs,
     rng: &mut rand::rngs::ThreadRng,
-    ansrs: &mut Vec<Answer>,
+    ansrs: &mut [Answer],
 ) {
     let mut map = HashMap::new();
     for ansr in ansrs.iter() {
