@@ -14,6 +14,10 @@ jobs:
   build:
     name: build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
+    env:
+      # Filled in by the packaging steps via GITHUB_ENV; declared here so
+      # `${{ env.ASSET }}` in the upload step is a valid context access.
+      ASSET: ""
     strategy:
       fail-fast: false
       matrix:
