@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix a logic operation bug in constraint propagator.
+- Fix a bug in parsing negative integers and floats.
 
 ## [0.3.0] - 2026-10-02
 

@@ -560,6 +560,34 @@ impl<'src> Parser<'src> {
                     span,
                 })
             }
+            Token::Minus => {
+                self.match_token(Token::Minus)?;
+                let arg = self.parse_expr_factor()?;
+                let end = self.end_pos();
+                let span = Span { start, end };
+                // attach this minus to int or float
+                match arg {
+                    Expr::Lit {
+                        lit: LitVal::Int(val),
+                        span: _,
+                    } => Ok(Expr::Lit {
+                        lit: LitVal::Int(-val),
+                        span,
+                    }),
+                    Expr::Lit {
+                        lit: LitVal::Float(val),
+                        span: _,
+                    } => Ok(Expr::Lit {
+                        lit: LitVal::Float(-val),
+                        span,
+                    }),
+                    _ => Ok(Expr::Prim {
+                        prim: Prim::BNot,
+                        args: vec![arg],
+                        span,
+                    }),
+                }
+            }
             Token::Undefined => {
                 self.match_token(Token::Undefined)?;
                 let end = self.end_pos();

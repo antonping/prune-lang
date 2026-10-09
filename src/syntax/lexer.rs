@@ -115,9 +115,9 @@ pub enum Token {
     CmdParam,
     #[token("%query")]
     CmdQuery,
-    #[regex(r"-?[0-9]([0-9])*")]
+    #[regex(r"[0-9]([0-9])*")]
     Int,
-    #[regex(r"-?[0-9]([0-9])*\.[0-9]([0-9])*")]
+    #[regex(r"[0-9]([0-9])*\.[0-9]([0-9])*")]
     Float,
     #[token("true")]
     #[token("false")]
