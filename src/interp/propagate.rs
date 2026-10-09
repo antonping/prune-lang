@@ -192,7 +192,6 @@ fn propagate_bool_and(
             ];
             PropagateResult::Propagate(res)
         }
-        (Lit(Bool(false)), _, _) | (_, Lit(Bool(false)), _) => PropagateResult::Conflit,
         (_, _, _) => PropagateResult::Skip,
     }
 }
@@ -218,7 +217,6 @@ fn propagate_bool_or(
             ];
             PropagateResult::Propagate(res)
         }
-        (Lit(Bool(true)), _, _) | (_, Lit(Bool(true)), _) => PropagateResult::Conflit,
         (_, _, _) => PropagateResult::Skip,
     }
 }
